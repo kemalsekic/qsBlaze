@@ -1,0 +1,74 @@
+﻿@page "/players/playerprofile/{playerId:int}"
+
+@using QStack.DataAccess.Models;
+@using MatBlazor;
+@using Plugin.LocalNotification
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+
+@inject HttpClient httpClient
+@inject QStack.DataAccess.Interfaces.IPeopleData _db
+@inject IJSRuntime jsRunTime;
+@inject NavigationManager NavManager
+
+
+<button onclick="@GoBack"><MatButton><MatIcon Icon="@MatIconNames.Arrow_back_ios"></MatIcon></MatButton></button>
+
+<h2>@playerToEdit.FirstName @playerToEdit.LastName</h2>
+<br />
+<br />
+
+@if (players is null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>@playerToEdit.Id</td>
+                <td>@playerToEdit.FirstName</td>
+                <td>@playerToEdit.LastName</td>
+            </tr>
+        </tbody>
+    </table>
+}
+
+<br />
+<hr />
+
+@code {
+    bool panelOpenState;
+    bool panelOpenState2;
+    private string? activeUser;
+
+    [Parameter]
+    public int PlayerId { get; set; }
+
+    private List<PersonModel> players;
+    private PersonModel playerToEdit = new PersonModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        players = await _db.GetPeople();
+        if (players != null)
+        {
+            playerToEdit = players.Find(x => x.Id == PlayerId);
+        }
+    }
+
+    private void GoBack()
+    {
+        NavManager.NavigateTo($"/players");
+    }
+}

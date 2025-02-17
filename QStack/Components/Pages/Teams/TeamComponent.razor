@@ -1,0 +1,159 @@
+﻿@* @page "/Pages/Teams/Profile/{teamId:int}"
+
+@using QStack.DataAccess;
+@using QStack.DataAccess.Models;
+@using QStack.DataAccess.Interfaces
+@using QStack.DataAccess.Models;
+@using MatBlazor;
+@using Microsoft.AspNetCore.Identity
+
+@inject NavigationManager NavManager
+@inject ITeamData _db
+@inject IPlayerData _playerdb
+
+<h3>Team Profile</h3>
+
+<h2>@teamToEdit.TeamName</h2>
+<br />
+<br />
+<p>Hey, @activeUser!  Want to let @teamToEdit.TeamName know how they're doing?  Vote on a skill!</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Team Id</th>
+            <th>Team Name</th>
+            <th>Team Owner</th>
+            <th>Team Captain</th>
+            <th></th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>@teamToEdit.TeamId</td>
+            <td>@teamToEdit.TeamName</td>
+            <td>@teamToEdit.TeamOwner</td>
+            <td>@teamToEdit.TeamCaptain</td>
+            <AuthorizeView>
+                <Authorized>
+                    <td>
+                        <NavLink class="nav-link" href="@($"/Pages/Teams/Edit/{teamToEdit.TeamId}")" style="width:fit-content" Match="NavLinkMatch.All">
+                            <MatTooltip Tooltip="Edit Person" Context="toolT">
+                                <MatIconButton style="color:black" RefBack="@toolT" Icon="edit"></MatIconButton>
+                            </MatTooltip>
+                        </NavLink>
+                    </td>
+                    <td>
+                        <MatButton type="submit" OnClick="@JoinTeam">Join Team</MatButton>
+                    </td>
+                </Authorized>
+            </AuthorizeView>
+        </tr>
+    </tbody>
+</table>
+
+<br />
+<hr />
+<h2>Players on this team:</h2>
+<br />
+
+@if (players is null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <MatTable Items="@players" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="SelectionChangedEvent" FilterByColumnName="FirstName">
+        <MatTableHeader>
+            <th>Id</th>
+            <th>FirstName</th>
+        </MatTableHeader>
+        <MatTableRow Context="playerContext">
+            <td>@playerContext.PlayerId</td>
+            <td>@playerContext.FirstName</td>
+            <td>@playerContext.LastName</td>
+            <AuthorizeView>
+                <Authorized>
+                    <td>@playerContext.PhoneNumber</td>
+                </Authorized>
+            </AuthorizeView>
+        </MatTableRow>
+    </MatTable>
+
+}
+
+@code {
+    bool panelOpenState;
+    bool panelOpenState2;
+    private string? activeUser;
+    private string? activeUserUUID;
+    [Parameter]
+    public int TeamId { get; set; }
+
+    private List<TeamsModel> teams;
+    private List<PlayersModel> players;
+    private TeamsModel teamToEdit = new TeamsModel();
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [Inject]
+    UserManager<IdentityUser> userManager { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            // User is logged in
+            var currentUser = await userManager.GetUserAsync(user);
+            var currentUserId = currentUser.Id;
+            var currentUserEmail = currentUser.Email;
+            //var currentUserPhone = currentUser.PhoneNumber;
+            var currentUserEmailConfirmed = currentUser.EmailConfirmed;
+            activeUser = currentUser.UserName.ToString();
+            activeUser = activeUser.Substring(0, activeUser.IndexOf("@"));
+            activeUserUUID = currentUserId.ToString();
+        }
+        else
+        {
+            // User is not logged in
+        }
+
+        teams = await _db.GetTeams();
+        if (teams != null)
+        {
+            teamToEdit = teams.Find(x => x.TeamId == TeamId);
+        }
+        players = await _playerdb.GetPlayers();
+    }
+
+    private void ToggleGoBack()
+    {
+        NavManager.NavigateTo("/Pages/Teams");
+    }
+
+    private void SelectionChangedEvent(object player)
+    {
+        var currentPlayer = (PlayersModel)player;
+
+        if (currentPlayer is not null)
+        {
+            NavManager.NavigateTo($"/Pages/Players/Profile/{currentPlayer.PlayerId}");
+        }
+    }
+
+    private async Task JoinTeam()
+    {
+        PlayersModel p = new PlayersModel
+            {
+                UUId = activeUserUUID,
+                TeamId = teamToEdit.TeamId
+            };
+        await _db.AddPlayer(p);
+
+        players.Add(p);
+    }
+}
+ *@

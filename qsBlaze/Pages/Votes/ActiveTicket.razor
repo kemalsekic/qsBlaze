@@ -1,0 +1,99 @@
+﻿@page "/Pages/Votes/VotingCenter/{ticketId:int}"
+
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Interfaces
+@using MatBlazor;
+@using Microsoft.AspNetCore.Identity
+@using qsBlaze.Shared.Components.Voting
+@using qsBlaze.Shared.GetInfo;
+
+@inject NavigationManager NavManager
+@inject IPeopleData _db
+@inject IGetActiveUserClass _aUser
+
+<h3>Ticket Profile</h3>
+
+@if(personToEdit is not null)
+{
+    <h2>@personToEdit.FirstName @personToEdit.LastName</h2>
+    <br />
+    <br />
+    <br />
+    <p>Hey, @activeUser!  Want to let @personToEdit.FirstName know how they're doing?  Vote on a skill!</p>
+
+
+    @if (people is null)
+    {
+        <MatProgressCircle Closed="true" />
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Email Address</th>
+                    <th>Color</th>
+                    <th>Assigned Points</th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>@personToEdit.Id</td>
+                    <td>@personToEdit.FirstName</td>
+                    <td>@personToEdit.LastName</td>
+                    <td>@personToEdit.EmailAddress</td>
+                    <td style="background-color:@personToEdit.Color">@personToEdit.Color</td>
+                    <td>@personToEdit.AssignedPoints</td>
+
+                    <AuthorizeView>
+                        <Authorized>
+                            <td>
+                                <NavLink class="nav-link" href="@($"/Data/People/Edit/{personToEdit.Id}")" style="width:fit-content" Match="NavLinkMatch.All">
+                                    <button class="btn btn-primary">  Edit Person</button>
+                                </NavLink>
+                            </td>
+                        </Authorized>
+                    </AuthorizeView>
+                </tr>
+            </tbody>
+        </table>
+
+        <div>
+            <SkillsComponent TicketId="TicketId"></SkillsComponent>
+        </div>
+    }
+
+    <br />
+    <hr />
+}
+@code {
+    private string? activeUser;
+    [Parameter]
+    public int TicketId { get; set; }
+
+    private List<PersonModel> people;
+    private PersonModel personToEdit = new PersonModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await _aUser.GetActiveUser(activeUser);
+
+        people = await _db.GetPeople();
+        if (people is not null)
+        {
+            personToEdit = people.Find(x => x.Id == TicketId);
+        }
+    }
+
+    private void ToggleGoBack()
+    {
+        NavManager.NavigateTo("/Data/People/View");
+    }
+}

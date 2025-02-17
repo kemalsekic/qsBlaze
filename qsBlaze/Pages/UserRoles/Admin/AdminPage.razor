@@ -1,0 +1,180 @@
+﻿@page "/admin"
+
+@attribute [Authorize(Roles = "Admin")]
+
+@using System.Text;
+@using qsBlaze.Models
+@using DataAccessLibrary
+@using DataAccessLibrary.Models
+@using DataAccessLibrary.Interfaces
+@using MatBlazor
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Identity
+@using qsBlaze.Data.UserInfo
+@using qsBlaze.Controllers.AdminController
+@using System.Security.Cryptography
+@using System.Linq
+@using qsBlaze.Shared.HelperProcs
+
+@inject UserManager<IdentityUser> UserManager
+@inject IAppUserData _db
+@inject IHelperUserAdded _helperDB
+@inject IJSRuntime jsRunTime;
+
+<h3>User Management</h3>
+@*
+<AuthorizeView>
+    <Authorized Context="Auth">
+        <MatTooltip Tooltip="Create new user">
+            <MatIconButton style="color:deeppink" RefBack="@context" Icon="add" OnClick="@OpenDialog"></MatIconButton>
+        </MatTooltip>
+    </Authorized>
+</AuthorizeView>
+
+<MatDialog @bind-IsOpen="@dialogIsOpen">
+    <MatDialogTitle>Create a new user</MatDialogTitle>
+    <MatDialogContent>
+        <EditForm Model="@newPerson" OnValidSubmit="()=>RegisterUser()">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <MatTextField id="emailAddress" PlaceHolder="Email Address" @bind-Value="@newPerson.Email" Label="Email Address"></MatTextField>
+            <MatTextField id="userName" PlaceHolder="User Name" @bind-Value="@newPerson.UserName" Label="User Name"></MatTextField>
+        </EditForm>
+
+    </MatDialogContent>
+    <MatDialogActions>
+        <MatButton OnClick="@(e => { dialogIsOpen = false; })">Cancel</MatButton>
+        <MatButton type="submit" @onclick="()=>RegisterUser()">Create</MatButton>
+    </MatDialogActions>
+</MatDialog>*@
+
+@if (people is null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Role Id</th>
+                <th>Role</th>
+                <th>UserName</th>
+                <th>Email Address</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var person in people)
+            {
+                _helperDB.GenerateUUID(person, userRoles);
+                person.UUId = people.IndexOf(person);
+                <tr>
+                    <td>@person.Id</td>
+                    <td>@person.RoleId</td>
+                    <td>@person.RoleType</td>
+                    <td>@person.UserName</td>
+                    <td>@person.Email</td>
+                    <td>
+                        <NavLink class="nav-link" href="@($"/userroles/admin/userpage/{person.UUId}")" style="width:fit-content" Match="NavLinkMatch.All">
+                            <MatTooltip Tooltip="Edit User">
+                                <MatIconButton style="color:black" RefBack="@context" Icon="edit"></MatIconButton>
+                            </MatTooltip>
+                        </NavLink>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+@code {
+    bool panelOpenState;
+    bool dialogIsOpen = false;
+    bool dialogIsOpen2 = false;
+    private ApplicationUser personToEdit = new ApplicationUser();
+    private List<ApplicationUser>? people;
+    private List<UserRolesModel>? userRoles;
+    private List<UserRolesModel>? userRoleTypes;
+
+    private ApplicationUser newPerson = new ApplicationUser();
+    void OpenDialog()
+    {
+        dialogIsOpen = true;
+    }
+
+    void OpenDialog2(ApplicationUser pToEdit)
+    {
+        personToEdit = pToEdit;
+        dialogIsOpen2 = true;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        people = await _db.GetRegisteredUsers();
+        userRoles = await _db.GetUserRoles();
+    }
+
+    private async Task RegisterUser()
+    {
+        Random rnd = new Random();
+        string useThisId = GetHashString(rnd.Next().ToString());
+        string tempPass = GetHashString("Test123!");
+
+        ApplicationUser p = new ApplicationUser
+        {
+            Id = useThisId,
+            Email = newPerson.Email,
+            UserName = newPerson.UserName,
+            EmailConfirmed = true,
+            PhoneNumberConfirmed = false,
+            TwoFactorEnabled = false,
+            LockoutEnabled = true,
+            AccessFailedCount = 0,
+            NormalizedUserName = newPerson.UserName.ToUpper(),
+            PasswordHash = "Test123!"
+        };
+
+        await _db.RegisterUser(p);
+
+        if(people is not null)
+        {
+            people.Add(p);
+        }
+        newPerson = new ApplicationUser();
+        dialogIsOpen = false;
+    }
+
+    public static byte[] GetHash(string inputString)
+    {
+        using (HashAlgorithm algorithm = SHA256.Create())
+            return algorithm.ComputeHash(Encoding.UTF8.GetBytes(inputString));
+    }
+
+    public static string GetHashString(string inputString)
+    {
+        StringBuilder sb = new StringBuilder();
+        foreach (byte b in GetHash(inputString))
+            sb.Append(b.ToString("X2"));
+        return sb.ToString();
+    }
+
+    //private async Task DeletePerson(ApplicationUser deletePerson)
+    //{ 
+    //    ApplicationUser p = new ApplicationUser
+    //        {
+    //            Id = deletePerson.Id,
+    //            EmailAddress = deletePerson.EmailAddress,
+    //            UserName = deletePerson.UserName
+    //        };
+    //    var deleteMe = people.SingleOrDefault(a => a.Id == deletePerson.Id);
+    //    if (deleteMe != null)
+    //    {
+    //        people.Remove(deleteMe);
+    //    }
+    //    await _db.DeletePerson(p);
+    //}
+}

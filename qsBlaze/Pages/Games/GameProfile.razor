@@ -1,0 +1,112 @@
+﻿@page "/Pages/Games/Profile/{gameId:int}"
+
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Interfaces
+@using DataAccessLibrary.Models.Games;
+@using DataAccessLibrary.Models.Teams;
+@using DataAccessLibrary.Interfaces.Games;
+@using MatBlazor;
+@using Microsoft.AspNetCore.Identity
+@using Shared.TwilioControllers
+
+@inject NavigationManager NavManager
+@inject IGameData _db
+
+<h3>Game Profile</h3>
+
+<div>
+</div>
+
+<h2>@gameToEdit.GameName</h2>
+<br />
+<br />
+<p>Hey, @activeUser!  Want to let @gameToEdit.GameName know how they're doing?  Vote on a skill!</p>
+
+@if (games is null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Game Id</th>
+                <th>Game Name</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>@gameToEdit.GameId</td>
+                <td>@gameToEdit.GameName</td>
+                <AuthorizeView>
+                    <Authorized>
+                        <td>
+                            <NavLink class="nav-link" href="@($"/Pages/Games/Edit/{gameToEdit.GameId}")" style="width:fit-content" Match="NavLinkMatch.All">
+                                <MatTooltip Tooltip="Edit Person" Context="toolT">
+                                    <MatIconButton style="color:black" RefBack="@toolT" Icon="edit"></MatIconButton>
+                                </MatTooltip>
+                            </NavLink>
+                        </td>
+                    </Authorized>
+                </AuthorizeView>
+            </tr>
+        </tbody>
+    </table>
+
+}
+
+<br />
+<hr />
+
+@code {
+    bool panelOpenState;
+    bool panelOpenState2;
+    private string? activeUser;
+    [Parameter]
+    public int GameId { get; set; }
+
+    private List<GamesModel> games;
+    private GamesModel gameToEdit = new GamesModel();
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [Inject]
+    UserManager<IdentityUser> userManager { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            // User is logged in
+            var currentUser = await userManager.GetUserAsync(user);
+            var currentUserId = currentUser.Id;
+            var currentUserEmail = currentUser.Email;
+            //var currentUserPhone = currentUser.PhoneNumber;
+            var currentUserEmailConfirmed = currentUser.EmailConfirmed;
+            activeUser = currentUser.UserName.ToString();
+            activeUser = activeUser.Substring(0, activeUser.IndexOf("@"));
+        }
+        else
+        {
+            // User is not logged in
+        }
+
+        games = await _db.GetGames();
+        if (games != null)
+        {
+            gameToEdit = games.Find(x => x.GameId == GameId);
+        }
+    }
+
+    private void ToggleGoBack()
+    {
+        NavManager.NavigateTo("/Pages/Games");
+    }
+}

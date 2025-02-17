@@ -1,0 +1,144 @@
+﻿@page "/Data/People/View"
+@*@page "/Data/People/Edit/{personId:int}"*@
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Interfaces
+@using MatBlazor;
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using System.Net.Http.Headers
+
+@inject IPeopleData _db
+@inject IJSRuntime jsRunTime;
+@inject NavigationManager NavManager
+
+<h3>People</h3>
+
+<AuthorizeView>
+    <Authorized Context="Auth">
+        <MatTooltip Tooltip="Create new user">
+            <MatIconButton style="color:deeppink" RefBack="@context" Icon="add" OnClick="@OpenDialog"></MatIconButton>
+        </MatTooltip>
+    </Authorized>
+</AuthorizeView>
+
+<MatDialog @bind-IsOpen="@dialogIsOpen">
+    <MatDialogTitle>Create a new user</MatDialogTitle>
+    <MatDialogContent>
+    <EditForm Model="@newPerson" OnValidSubmit="@InsertPerson">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+            <MatTextField id="firstName" @bind-Value="@newPerson.FirstName" Label="First Name"></MatTextField>
+            <MatTextField id="lastName" @bind-Value="@newPerson.LastName" Label="Last Name"></MatTextField>
+            <MatTextField id="emailAddress" @bind-Value="@newPerson.EmailAddress" Label="Email Address"></MatTextField>
+            <MatTextField id="userName" @bind-Value="@newPerson.UserName" Label="User Name"></MatTextField>
+        @*<button type="submit" class="btn btn-primary">Submit</button>*@
+    </EditForm>
+ 
+ 
+    </MatDialogContent>
+    <MatDialogActions>
+        <MatButton OnClick="@(e => { dialogIsOpen = false; })">Cancel</MatButton>
+        <MatButton type="submit" OnClick="@InsertPerson">Create</MatButton>
+    </MatDialogActions>
+</MatDialog>
+
+@if(people is null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <MatTable Items="@people" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="SelectionChangedEvent" FilterByColumnName="FirstName">
+        <MatTableHeader>
+                <th>Id</th>
+                <th>FirstName</th>
+                <th>LastName</th>
+                <th>Email</th>
+                <th>Color</th>
+                <th style="text-align:center">Assigned Points</th>
+        </MatTableHeader>
+        <MatTableRow>
+                    <td>@context.Id</td>
+                    <td>@context.FirstName</td>
+                    <td>@context.LastName</td>
+                    <td>@context.EmailAddress</td>
+                    <td style="background-color:@context.Color">@context.Color</td>
+                    <td style="text-align:center">@context.AssignedPoints</td>
+        </MatTableRow>
+    </MatTable>
+}
+@code {
+    bool panelOpenState;
+    bool dialogIsOpen = false;
+    void OpenDialog()
+    {
+        dialogIsOpen = true;
+    }
+    private List<PersonModel> people;
+
+    private DisplayPersonModel newPerson = new DisplayPersonModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        people = await _db.GetPeople();
+    }
+
+    private async Task InsertPerson()
+    {
+        PersonModel p = new PersonModel
+            {
+                FirstName = newPerson.FirstName,
+                LastName = newPerson.LastName,
+                EmailAddress = newPerson.EmailAddress,
+                UserName = newPerson.UserName
+            };
+        await _db.InsertPerson(p);
+
+        people.Add(p);
+        newPerson = new DisplayPersonModel();
+        dialogIsOpen = false;
+    }
+
+    private async Task DeletePerson(PersonModel deletePerson)
+    {
+        PersonModel p = new PersonModel
+            {
+                Id = deletePerson.Id,
+                FirstName = deletePerson.FirstName,
+                LastName = deletePerson.LastName,
+                EmailAddress = deletePerson.EmailAddress,
+                UserName = deletePerson.UserName
+            };
+        var deleteMe = people.SingleOrDefault(a => a.Id == deletePerson.Id);
+        if (deleteMe != null)
+        {
+            people.Remove(deleteMe);
+        }
+        await _db.DeletePerson(p);
+    }
+
+    private async Task UpdatePerson(PersonModel updatePerson)
+    {
+        PersonModel p = new PersonModel
+            {
+                Id = updatePerson.Id,
+                FirstName = updatePerson.FirstName,
+                LastName = updatePerson.LastName,
+                EmailAddress = updatePerson.EmailAddress,
+                UserName = updatePerson.UserName
+            };
+        await _db.EditPerson(p);
+    }
+
+    private void SelectionChangedEvent(object person)
+    {
+        var currentPerson = (PersonModel)person;
+
+        if(currentPerson is not null)
+        {
+            NavManager.NavigateTo($"/Data/People/Profile/{currentPerson.Id}");
+        }
+    }
+}

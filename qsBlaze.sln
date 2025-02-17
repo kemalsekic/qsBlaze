@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33205.214
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "qsBlaze", "qsBlaze\qsBlaze.csproj", "{332E87E6-3E4E-4874-893F-DCAC493E9F9E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataAccessLibrary", "DataAccessLibrary\DataAccessLibrary.csproj", "{9AEBFDE3-535F-4D89-9230-DC950EA14D61}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Build", "Build", "{9A250DD5-8762-4757-9E85-D245FE96777D}"
+	ProjectSection(SolutionItems) = preProject
+		RELEASENOTES.md = RELEASENOTES.md
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QStackAuth", "QStackAuth\QStackAuth.csproj", "{578FAEE8-064D-4059-BF53-B39C94A2F5D1}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QStack", "QStack\QStack.csproj", "{DC6CD8C9-2019-4976-8B25-51F68E7DD11B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{332E87E6-3E4E-4874-893F-DCAC493E9F9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{332E87E6-3E4E-4874-893F-DCAC493E9F9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{332E87E6-3E4E-4874-893F-DCAC493E9F9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{332E87E6-3E4E-4874-893F-DCAC493E9F9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9AEBFDE3-535F-4D89-9230-DC950EA14D61}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9AEBFDE3-535F-4D89-9230-DC950EA14D61}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9AEBFDE3-535F-4D89-9230-DC950EA14D61}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9AEBFDE3-535F-4D89-9230-DC950EA14D61}.Release|Any CPU.Build.0 = Release|Any CPU
+		{578FAEE8-064D-4059-BF53-B39C94A2F5D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{578FAEE8-064D-4059-BF53-B39C94A2F5D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{578FAEE8-064D-4059-BF53-B39C94A2F5D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{578FAEE8-064D-4059-BF53-B39C94A2F5D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC6CD8C9-2019-4976-8B25-51F68E7DD11B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC6CD8C9-2019-4976-8B25-51F68E7DD11B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC6CD8C9-2019-4976-8B25-51F68E7DD11B}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{DC6CD8C9-2019-4976-8B25-51F68E7DD11B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC6CD8C9-2019-4976-8B25-51F68E7DD11B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC6CD8C9-2019-4976-8B25-51F68E7DD11B}.Release|Any CPU.Deploy.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {75353D04-DB76-4CFC-903B-C08D3F8DD05A}
+	EndGlobalSection
+EndGlobal

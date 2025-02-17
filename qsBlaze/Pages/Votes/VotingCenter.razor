@@ -1,0 +1,118 @@
+﻿@page "/Pages/Votes/VotingCenter"
+@using MatBlazor
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using qsBlaze.Shared;
+@using qsBlaze.Shared.Components.Chat;
+@using Microsoft.AspNetCore.Identity;
+
+@inject NavigationManager NavManager
+
+<PageTitle>Voting Center</PageTitle>
+
+<MatButton OnClick="@(e => { dialogIsOpen = !dialogIsOpen; })">Chat</MatButton>
+<MatButton OnClick="@(e => { dialogIsOpen2 = !dialogIsOpen2; })">Create Ticket</MatButton>
+<MatButton OnClick="()=>GenerateRandomLink()" style="color:deeppink">Start Live Voting</MatButton>
+<MatButton OnClick="()=>NavToVotingSession()" style="color:seagreen">Voting Session</MatButton>
+
+<MatDialog @bind-IsOpen="@dialogIsOpen">
+    <MatDialogTitle>
+        <AuthorizeView>
+            <Authorized>
+                QS Chat - @context.User.Identity?.Name!
+            </Authorized>
+        </AuthorizeView>
+    </MatDialogTitle>
+    <MatDialogContent>
+        <p>What's on your mind?</p>
+        <ChatComponent></ChatComponent>
+    </MatDialogContent>
+    <MatDialogActions>
+        <MatButton OnClick="@(e => { dialogIsOpen = false; })">No Thanks</MatButton>
+        <MatButton OnClick="@OkClick">OK</MatButton>
+    </MatDialogActions>
+</MatDialog>
+
+
+<hr />
+
+<TicketsViewComponent></TicketsViewComponent>
+
+<MatDialog @bind-IsOpen="@dialogIsOpen2">
+    <MatDialogTitle>Hi @activeUser</MatDialogTitle>
+    <MatDialogContent>
+        <CreateTicket TheUser = "@p"></CreateTicket>
+    </MatDialogContent>
+    <MatDialogActions>
+        <MatButton OnClick="@(e => { dialogIsOpen2 = false; })">No Thanks</MatButton>
+        <MatButton OnClick="@OkClick">OK</MatButton>
+    </MatDialogActions>
+</MatDialog>
+
+
+
+@code {
+    bool dialogIsOpen = false;
+    bool dialogIsOpen2 = false;
+
+    private string? activeUser;
+    VoteTicketModel p = new VoteTicketModel();
+    [Parameter]
+    public int NewVoteNumber { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [Inject]
+    UserManager<IdentityUser> userManager { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            // User is logged in
+            var currentUser = await userManager.GetUserAsync(user);
+            var currentUserId = currentUser.Id;
+            var currentUserEmail = currentUser.Email;
+            var currentUserEmailConfirmed = currentUser.EmailConfirmed;
+            activeUser = currentUser.UserName.ToString();
+            activeUser = activeUser.Substring(0, activeUser.IndexOf("@"));
+            p.CreatedBy = activeUser;
+        }
+        else
+        {
+            Console.WriteLine("[QStack] - User is not logged in.");
+        }
+    }
+
+    void OpenDialog()
+    {
+        dialogIsOpen = true;
+        dialogIsOpen2 = true;
+    }
+    void OkClick()
+    {
+        dialogIsOpen = false;
+        dialogIsOpen2 = false;
+    }
+
+    private void GenerateRandomLink()
+    {
+        Random rnd = new Random();
+        NewVoteNumber = rnd.Next();
+        NavToNewPage(NewVoteNumber);
+    }
+
+    private void NavToNewPage(int voteNumber)
+    {
+        NavManager.NavigateTo($"/Pages/Votes/LiveVoting/{voteNumber}");
+    }
+
+    private void NavToVotingSession()
+    {
+        NavManager.NavigateTo($"/Pages/Votes/LiveVoting/Votesesh");
+    }
+}
+

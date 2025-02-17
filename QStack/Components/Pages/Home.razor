@@ -1,0 +1,39 @@
+﻿@page "/"
+@using QStack.DataAccess.Models;
+
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using System.Net.Http.Headers
+@using MatBlazor;
+@using System.Net.Http.Json
+@using QStack.Components.Pages.Players
+@using QStack.Components.Pages.Teams
+
+@inject HttpClient httpClient
+@inject QStack.DataAccess.Interfaces.IPeopleData _db 
+@inject IJSRuntime jsRunTime;
+@inject NavigationManager NavManager
+
+<PageTitle>QStack</PageTitle>
+
+<MatTabGroup>
+    <MatTab Label="Players">
+        <PlayersComponent />
+    </MatTab>
+    <MatTab Label="Schedule">
+        <Counter></Counter>
+    </MatTab>
+    <MatTab>
+        <LabelContent>
+            Team <MatIcon Icon="@MatIconNames.Group"></MatIcon>
+        </LabelContent>
+        <ChildContent>
+            <TeamsPage></TeamsPage>
+        </ChildContent>
+    </MatTab>
+
+</MatTabGroup>
+
+@code {
+   
+}

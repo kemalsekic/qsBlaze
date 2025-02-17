@@ -1,0 +1,29 @@
+﻿@using QStack.Components.Pages
+@using QStack.Components.Pages.Players
+@using QStack.Components.Pages.Teams
+@using MatBlazor;
+
+<h1>@FoundActiveUser</h1>
+<MatTabGroup>
+    <MatTab Label="Players">
+        <PlayersComponent />
+    </MatTab>
+    <MatTab Label="Schedule">
+        <Counter></Counter>
+    </MatTab>
+    <MatTab>
+        <LabelContent>
+            Team <MatIcon Icon="@MatIconNames.Group"></MatIcon>
+        </LabelContent>
+        <ChildContent>
+            <TeamsPage></TeamsPage>
+        </ChildContent>
+    </MatTab>
+
+</MatTabGroup>
+
+@code {
+
+    [CascadingParameter]
+    public string? FoundActiveUser { get; set; }
+}

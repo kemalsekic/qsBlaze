@@ -1,0 +1,293 @@
+﻿@using Microsoft.AspNetCore.SignalR.Client
+@using MatBlazor
+@using Microsoft.AspNetCore.Identity
+@using qsBlaze.Models;
+@using qsBlaze.Pages.Votes;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Chat;
+@using DataAccessLibrary.Models;
+@using Microsoft.AspNetCore.Components.Web.Virtualization;
+@using Microsoft.AspNetCore.Components.QuickGrid;
+
+@inject NavigationManager NavManager
+@implements IAsyncDisposable
+@inject IChatData _db
+
+<div>
+    <div>
+        @if (chats is null)
+        {
+            <MatProgressCircle Closed="true" />
+        }
+        else
+        {
+            <div style="display:block; overflow-y: hidden;">
+                <div style="background-color:aliceblue">
+                    <ul>
+                        @foreach (ChatModel chatText in chats)
+                        {
+                            ShowForThisUser(chatText);
+                            @if (chatDate != chatText.TimeStamp)
+                            {
+                                chatDate = chatText.TimeStamp;
+                                <hr />
+                                <p style="text-align:center">@chatText.TimeStamp.Date.ToShortDateString()</p>
+                            }
+                            @if (chatUserName != chatText.UserName)
+                            {
+                                chatUserName = chatText.UserName;
+                                <h5 style="color:darkslategrey;"><b>@chatUserName</b></h5>
+                            }
+                            <div>
+                                <p>@chatText.TimeStamp.ToShortTimeString(): <input disabled="@hiddenAndDisabled" @bind-value="chatText.ChatText" /> </p>
+                                <MatButton Icon="delete" Style="color:red;" @onclick="()=>DeleteChat(chatText)" hidden="@notMyChat"></MatButton>
+                                <MatButton Icon="edit" Style="color:blue;" OnClick="()=>EnableChat(chatText)" hidden="@notMyChat"></MatButton>
+                                <MatButton Icon="check" Style="color:green; text-align:right;" OnClick="()=>EditChat(chatText)" hidden="@notMyChat"></MatButton>
+                            </div>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="form-group"
+            style="
+            position: -webkit-sticky;
+            position: sticky;
+            bottom: 0;
+            background-color: #3a0647;
+            opacity:90%;
+            padding: 35px;
+            text-align:left;
+            font-size: 20px;
+            border:ridge;">
+        <input style="padding:20px; width:75%; border:ridge" placeholder="Type a new message" @onchange="changeValue" />
+        <MatButton Icon="send" Style="color:white;" @onchange="Send" disabled="@(IsConnected == false)">Send</MatButton>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Code for hub connection
+    /// </summary>
+    private HubConnection? hubConnection;
+    private List<string> messages = new();
+    private string? userInput;
+    private string? activeUser;
+    private string activeUserId;
+    private string? messageInput;
+    private string? chatUserName = "";
+    private DateTime? chatDate;
+    private bool hiddenAndDisabled = true;
+    private bool editMode = false;
+    private bool notMyChat = true;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [Inject]
+    UserManager<IdentityUser> userManager { get; set; }
+    private List<ChatModel>? chats;
+    private ChatModel activeChat = new ChatModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        chats = await _db.GetChats();
+        //if (chats != null)
+        //{
+        //    activeChat = activeChat.Find(x => x.Id == Id);
+        //}
+        var user = (await authenticationStateTask).User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            // User is logged in
+            var currentUser = await userManager.GetUserAsync(user);
+            var currentUserId = currentUser.Id;
+            var currentUserEmail = currentUser.Email;
+            var currentUserEmailConfirmed = currentUser.EmailConfirmed;
+            activeUserId = currentUserId.ToString(); ;
+            activeUser = currentUser.UserName.ToString();
+            activeUser = activeUser.Substring(0, activeUser.IndexOf("@"));
+        }
+        else
+        {
+            // User is not logged in
+        }
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavManager.ToAbsoluteUri("/votehub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
+        {
+            var formattedMessage = $"{user}: {message}";
+            messages.Add(formattedMessage);
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private async Task Send()
+    {
+        if (messageInput is not null)
+        {
+            await InsertChat();
+        }
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("SendMessage", activeUser, messageInput);
+        }
+        messageInput = null;
+    }
+
+    public bool IsConnected => hubConnection?.State == HubConnectionState.Connected;
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    private async Task InsertChat()
+    {
+        ChatModel p = new ChatModel
+            {
+                UserId = activeUserId,
+                UserName = activeUser,
+                ChatText = messageInput,
+                TimeStamp = DateTime.Now
+            };
+        await _db.InsertChat(p);
+
+        chats.Add(p);
+    }
+
+    private async Task DeleteChat(ChatModel deleteChat)
+    {
+        ChatModel p = new ChatModel
+            {
+                Id = deleteChat.Id,
+                UserName = deleteChat.UserName,
+                TimeStamp = deleteChat.TimeStamp,
+                ChatText = deleteChat.ChatText
+            };
+        var deleteMe = chats.SingleOrDefault(a => a.Id == deleteChat.Id);
+        if (deleteMe != null)
+        {
+            chats.Remove(deleteMe);
+        }
+        await _db.DeleteChat(p);
+        //ToggleEditCancel();
+    }
+
+    private async Task EditChat(ChatModel editChat)
+    {
+        ChatModel p = new ChatModel
+            {
+                Id = editChat.Id,
+                UserName = editChat.UserName,
+                TimeStamp = editChat.TimeStamp,
+                ChatText = editChat.ChatText,
+                UserId = editChat.UserId
+            };
+        await _db.EditChat(p);
+        DisableChat(p);
+    }
+
+    public async Task changeValue(ChangeEventArgs eventArgs)
+    {
+        if (eventArgs.Value is not null && eventArgs.Value.ToString() != "")
+        {
+            messageInput = eventArgs.Value.ToString();
+        }
+        await Send();
+    }
+
+    private void EnableChat(ChatModel thisChat)
+    {
+        if(!notMyChat)
+        {
+            hiddenAndDisabled = !hiddenAndDisabled;
+            editMode = !editMode;
+        }
+        else
+        {
+            hiddenAndDisabled = true;
+            editMode = false;
+        }
+    }
+
+    private void DisableChat(ChatModel thisChat)
+    {
+        hiddenAndDisabled = !hiddenAndDisabled;
+        editMode = !editMode;
+    }
+
+    private void ShowForThisUser(ChatModel thisChat)
+    {
+        if(thisChat.UserId == activeUserId)
+        {
+            notMyChat = false;
+        }
+        else
+        {
+            notMyChat = true;
+        }
+    }
+}
+
+
+<!--Section for chat hub-->
+@*Section for chat hub*@
+@*<div style="display:block; overflow-y:hidden;">
+    <div>
+        <ul>
+            @foreach (string message in messages)
+            {
+                <li>@message</li>
+            }
+        </ul>
+    </div>
+</div>
+<hr />*@
+
+
+    <!--QuickGrid-->
+    <!--
+    <QuickGrid Items="chats.AsQueryable()">
+            <PropertyColumn Property="f => f.Id"></PropertyColumn>
+            <PropertyColumn Property="f => f.UserName">
+                <ColumnOptions>
+                    <input />
+                </ColumnOptions>
+            </PropertyColumn>
+            <PropertyColumn Property="f => f.ChatText"></PropertyColumn>
+            <TemplateColumn Title="UserName" SortBy="@sortByName">
+                <div class="flex items-center">
+                    <nobr>
+                        <strong>@context.Id</strong>, @context.UserName
+                    </nobr>
+                </div>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <button @onclick="@(() => Hire(context))">Hire</button>
+                <button @onclick="@(() => Fire(context))">Fire</button>
+            </TemplateColumn>
+        </QuickGrid>
+    -->
+
+    <!--QuickGrid Code-->
+    <!--        
+    string message = string.Empty;
+
+    GridSort<ChatModel> sortByName = GridSort<ChatModel>
+        .ByAscending(p => p.Id)
+        .ThenAscending(p => p.UserName);
+
+    void Hire(ChatModel p) => message = $"You want to hire {p.Id} {p.UserName}";
+
+    void Fire(ChatModel p) => message = $"You want to fire {p.Id} {p.UserName}";
+    -->

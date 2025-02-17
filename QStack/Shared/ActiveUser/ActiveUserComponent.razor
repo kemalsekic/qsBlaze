@@ -1,0 +1,37 @@
+﻿@using MatBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+
+<h1>@ActiveUser</h1>
+
+@code {
+    //public string? activeUser;
+    [Parameter]
+    public string? ActiveUser { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [Inject]
+    UserManager<IdentityUser> userManager { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            // User is logged in
+            var currentUser = await userManager.GetUserAsync(user);
+            var currentUserId = currentUser.Id;
+            var currentUserEmail = currentUser.Email;
+            var currentUserEmailConfirmed = currentUser.EmailConfirmed;
+            ActiveUser = currentUser.UserName.ToString();
+            ActiveUser = ActiveUser.Substring(0, ActiveUser.IndexOf("@"));
+        }
+        else
+        {
+            // User is not logged in
+        }
+    }
+}
+

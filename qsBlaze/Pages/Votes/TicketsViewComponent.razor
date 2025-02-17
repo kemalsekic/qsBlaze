@@ -1,0 +1,114 @@
+﻿@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Interfaces
+@using MatBlazor;
+@using System.ComponentModel.DataAnnotations
+
+@inject ITicketData _tdb
+
+<h3>Tickets</h3>
+
+@if (tickets is null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Ticket #</th>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Created By</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var ticket in tickets)
+            {
+                <tr>
+                    <td>@ticket.TicketId</td>
+                    <td>@ticket.TicketNumber</td>
+                    <td>@ticket.Title</td>
+                    <td>@ticket.Description</td>
+                    <td>@ticket.CreatedBy</td>
+                    <td>
+                        <NavLink class="nav-link" href="@($"/Pages/Votes/VotingCenter/{ticket.TicketId}")" style="width:fit-content" Match="NavLinkMatch.All">
+                            <MatTooltip Tooltip="View Profile">
+                                <MatIconButton style="color:black" RefBack="@context" Icon="account_box"></MatIconButton>
+                            </MatTooltip>
+                        </NavLink>
+                    </td>
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <td>
+                                <NavLink class="nav-link" href="@($"/Pages/Votes/VotingCenter/{ticket.TicketId}")" style="width:fit-content" Match="NavLinkMatch.All">
+                                    <MatIconButton style="color:black" Icon="edit"></MatIconButton>
+                                </NavLink>
+                            </td>
+                        </Authorized>
+                    </AuthorizeView>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+@code {
+    private List<VoteTicketModel> tickets;
+    private VoteTicketModel newTicket = new VoteTicketModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        tickets = await _tdb.GetTickets();
+    }
+
+    private async Task InsertTicket()
+    {
+        VoteTicketModel p = new VoteTicketModel
+            {
+                Title = newTicket.Title,
+                Description = newTicket.Description,
+                VoteDate = newTicket.VoteDate,
+                VoteValue = newTicket.VoteValue
+            };
+        await _tdb.InsertTicket(p);
+
+        tickets.Add(p);
+        newTicket = new VoteTicketModel();
+    }
+
+    private async Task DeleteTicket(VoteTicketModel deleteTicket)
+    {
+        VoteTicketModel p = new VoteTicketModel
+            {
+                TicketId = deleteTicket.TicketId,
+                Title = deleteTicket.Title,
+                Description = deleteTicket.Description,
+                VoteDate = deleteTicket.VoteDate,
+                VoteValue = deleteTicket.VoteValue
+            };
+        var deleteMe = tickets.SingleOrDefault(a => a.TicketId == deleteTicket.TicketId);
+        if (deleteMe != null)
+        {
+            tickets.Remove(deleteMe);
+        }
+        await _tdb.DeleteTicket(p);
+    }
+
+    private async Task UpdateTicket(VoteTicketModel updateTicket)
+    {
+        VoteTicketModel p = new VoteTicketModel
+            {
+                TicketId = updateTicket.TicketId,
+                Title = updateTicket.Title,
+                Description = updateTicket.Description,
+                VoteDate = updateTicket.VoteDate,
+                VoteValue = updateTicket.VoteValue
+            };
+        await _tdb.EditTicket(p);
+    }
+}

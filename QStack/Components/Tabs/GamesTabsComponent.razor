@@ -1,0 +1,34 @@
+﻿@using QStack.Components.Pages
+@using QStack.Components.Pages.Games
+@using MatBlazor;
+@inject NavigationManager NavManager
+
+<MatFAB Style="position: fixed; bottom: 1rem; right: 1rem;" Icon="@MatIconNames.Add" Label="New Game" OnClick="@(_ => GoToAbsolute())"></MatFAB>
+
+<MatTabGroup>
+    <MatTab>
+        <LabelContent>
+            My Games <MatIcon Icon="@MatIconNames.Golf_course"></MatIcon>
+        </LabelContent>
+        <ChildContent>
+            <MyGamesComponent></MyGamesComponent>
+        </ChildContent>
+    </MatTab>
+    <MatTab>
+        <LabelContent>
+            Team <MatIcon Icon="@MatIconNames.Group"></MatIcon>
+        </LabelContent>
+        <ChildContent>
+        <MyGamesComponent></MyGamesComponent>
+        </ChildContent>
+    </MatTab>
+
+</MatTabGroup>
+
+@code {
+
+    void GoToAbsolute()
+    {
+        NavManager.NavigateTo($"/newGame");
+    }
+}

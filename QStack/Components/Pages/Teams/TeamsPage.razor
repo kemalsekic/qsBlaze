@@ -1,0 +1,93 @@
+﻿@page "/teams"
+@using QStack.DataAccess
+@using MatBlazor;
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using System.Net.Http.Headers
+
+@inject ITeamData _db
+@inject IJSRuntime jsRunTime;
+@inject NavigationManager NavManager
+ 
+@if (teams is null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <MatTable Items="@teams" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="SelectionChangedEvent" FilterByColumnName="FirstName">
+        <MatTableHeader>
+            <th>Id</th>
+            <th>FirstName</th>
+        </MatTableHeader>
+        <MatTableRow>
+            <td>@context.TeamId</td>
+            <td>@context.TeamName</td>
+        </MatTableRow>
+    </MatTable>
+}
+@code {
+    public DateTime? TeamDate { get; set; } = DateTime.Now.AddDays(-10);
+    bool panelOpenState;
+    bool dialogIsOpen = false;
+    void OpenDialog()
+    {
+        dialogIsOpen = true;
+    }
+    private List<TeamsModel> teams;
+
+    private TeamsModel newTeam = new TeamsModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        teams = await _db.GetTeams();
+    }
+
+    private async Task InsertTeam()
+    {
+        TeamsModel p = new TeamsModel
+            {
+                TeamName = newTeam.TeamName,
+                TeamOwner = newTeam.TeamOwner
+            };
+        await _db.InsertTeam(p);
+
+        teams.Add(p);
+        newTeam = new TeamsModel();
+        dialogIsOpen = false;
+    }
+
+    private async Task DeleteTeam(TeamsModel deleteTeam)
+    {
+        TeamsModel p = new TeamsModel
+            {
+                TeamId = deleteTeam.TeamId,
+            };
+        var deleteMe = teams.SingleOrDefault(a => a.TeamId == deleteTeam.TeamId);
+        if (deleteMe != null)
+        {
+            teams.Remove(deleteMe);
+        }
+        await _db.DeleteTeam(p);
+    }
+
+    private async Task UpdateTeam(TeamsModel updateTeam)
+    {
+        TeamsModel p = new TeamsModel
+            {
+                TeamId = updateTeam.TeamId,
+                TeamName = updateTeam.TeamName,
+            };
+        await _db.EditTeam(p);
+    }
+
+    private void SelectionChangedEvent(object person)
+    {
+        var currentTeam = (TeamsModel)person;
+
+        if (currentTeam is not null)
+        {
+            NavManager.NavigateTo($"/Pages/Teams/Profile/{currentTeam.TeamId}");
+        }
+    }
+}

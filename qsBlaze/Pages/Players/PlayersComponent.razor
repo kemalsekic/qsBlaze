@@ -1,0 +1,122 @@
+﻿@page "/Pages/Players"
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Models.Games;
+@using DataAccessLibrary.Models.Teams;
+@using DataAccessLibrary.Interfaces.Games;
+@using MatBlazor;
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using System.Net.Http.Headers
+
+@inject IPlayerData _db
+@inject IJSRuntime jsRunTime;
+@inject NavigationManager NavManager
+
+<h3>Players</h3>
+
+<AuthorizeView>
+    <Authorized Context="Auth">
+        <MatTooltip Tooltip="Create new user">
+            <MatIconButton style="color:deeppink" RefBack="@context" Icon="add" OnClick="@OpenDialog"></MatIconButton>
+        </MatTooltip>
+    </Authorized>
+</AuthorizeView>
+
+<MatDialog @bind-IsOpen="@dialogIsOpen">
+    <MatDialogTitle>Create a new user</MatDialogTitle>
+    <MatDialogContent>
+        <EditForm Model="@newPlayer" OnValidSubmit="@InsertPlayer">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <MatTextField id="PlayerName" @bind-Value="@newPlayer.FirstName" Label="Player Name"></MatTextField>
+            @*<button type="submit" class="btn btn-primary">Submit</button>*@
+        </EditForm>
+    </MatDialogContent>
+    <MatDialogActions>
+        <MatButton OnClick="@(e => { dialogIsOpen = false; })">Cancel</MatButton>
+        <MatButton type="submit" OnClick="@InsertPlayer">Create</MatButton>
+    </MatDialogActions>
+</MatDialog>
+
+@if (players is null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <MatTable Items="@players" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="SelectionChangedEvent" FilterByColumnName="FirstName">
+        <MatTableHeader>
+            <th>Id</th>
+            <th>FirstName</th>
+        </MatTableHeader>
+        <MatTableRow>
+            <td>@context.PlayerId</td>
+            <td>@context.FirstName</td>
+        </MatTableRow>
+    </MatTable>
+}
+@code {
+    bool panelOpenState;
+    bool dialogIsOpen = false;
+    void OpenDialog()
+    {
+        dialogIsOpen = true;
+    }
+    private List<PlayersModel> players;
+
+    private PlayersModel newPlayer = new PlayersModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        players = await _db.GetPlayers();
+    }
+
+    private async Task InsertPlayer()
+    {
+        PlayersModel p = new PlayersModel
+            {
+                FirstName = newPlayer.FirstName,
+            };
+        await _db.InsertPlayer(p);
+
+        players.Add(p);
+        newPlayer = new PlayersModel();
+        dialogIsOpen = false;
+    }
+
+    private async Task DeletePlayer(PlayersModel deletePlayer)
+    {
+        PlayersModel p = new PlayersModel
+            {
+                PlayerId = deletePlayer.PlayerId,
+            };
+        var deleteMe = players.SingleOrDefault(a => a.PlayerId == deletePlayer.PlayerId);
+        if (deleteMe != null)
+        {
+            players.Remove(deleteMe);
+        }
+        await _db.DeletePlayer(p);
+    }
+
+    private async Task UpdatePlayer(PlayersModel updatePlayer)
+    {
+        PlayersModel p = new PlayersModel
+            {
+                PlayerId = updatePlayer.PlayerId,
+                FirstName = updatePlayer.FirstName,
+            };
+        await _db.EditPlayer(p);
+    }
+
+    private void SelectionChangedEvent(object person)
+    {
+        var currentPlayer = (PlayersModel)person;
+
+        if (currentPlayer is not null)
+        {
+            NavManager.NavigateTo($"/Pages/Players/Profile/{currentPlayer.PlayerId}");
+        }
+    }
+}

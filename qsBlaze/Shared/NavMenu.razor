@@ -1,0 +1,104 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">qsBlaze</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        
+        <AuthorizeView Roles="Admin, TeamPlayer, TeamCaptain, TeamOwner">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Pages/Teams">
+                        <span class="oi oi-people" aria-hidden="true"></span> Team
+                    </NavLink>
+                </div>
+        </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin, TeamPlayer, TeamCaptain, TeamOwner">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Pages/Games">
+                        <span class="oi oi-people" aria-hidden="true"></span> Games
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" style="cursor:pointer;" @onclick="() => expandSubMenu = !expandSubMenu">
+                        @if(expandSubMenu)
+                        {
+                            <span class="oi oi-lock-unlocked" aria-hidden="true"></span>                            
+                        }
+                        else
+                        {
+                            <span class="oi oi-lock-locked" aria-hidden="true"></span>
+                        }Admin 
+                    </NavLink>
+                    @if (expandSubMenu)
+                    {
+                        <ul class="nav flex-column">
+                            <li class="nav-item px-3">
+                                <NavLink class="nav-link" href="admin">
+                                    <span class="oi oi-people" aria-hidden="true"></span> User Management
+                                </NavLink>
+                            </li>
+                        </ul>
+                    }
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        @*<div class="nav-item px-3">
+            <NavLink class="nav-link" href="Pages/Scrap/QStackAI">
+                <span class="oi oi-dashboard" aria-hidden="true"></span> QStack AI
+            </NavLink>
+        </div>*@
+        @*<div class="nav-item px-3">
+            <NavLink class="nav-link" href="fetchdata">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
+            </NavLink>
+        </div> *@
+        @*<div class="nav-item px-3">
+            <NavLink class="nav-link" href="developer">
+                <span class="oi oi-code" aria-hidden="true"></span> Developer
+            </NavLink>
+        </div>*@
+        @*<AuthorizeView Roles="Admin, Developer, QA">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Pages/Votes/VotingCenter">
+                        <span class="oi oi-check" aria-hidden="true"></span> Vote
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>*@
+
+        
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+    private bool expandSubMenu;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

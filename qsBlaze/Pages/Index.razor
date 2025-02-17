@@ -1,0 +1,53 @@
+﻿@page "/"
+@using MatBlazor
+@using Microsoft.AspNetCore.Identity
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using qsBlaze.Pages.People;
+
+@inject NavigationManager NavManager
+
+<PageTitle>Home</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <h1>Hello, @context.User.Identity?.Name!</h1>
+    </Authorized>
+</AuthorizeView>
+
+<SurveyPrompt Title="How is qsBlaze working for you?" />
+<h1>User: @activeUser</h1>
+
+<hr />
+
+<PeopleComponent></PeopleComponent>
+
+@code{
+    private string? activeUser;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [Inject]
+    UserManager<IdentityUser> userManager { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            // User is logged in
+            var currentUser = await userManager.GetUserAsync(user);
+            var currentUserId = currentUser.Id;
+            var currentUserEmail = currentUser.Email;
+            var currentUserEmailConfirmed = currentUser.EmailConfirmed;
+            activeUser = currentUser.UserName.ToString();
+        }
+        else
+        {
+            // User is not logged in
+        }
+    }
+}
+

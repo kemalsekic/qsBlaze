@@ -1,0 +1,138 @@
+﻿@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Interfaces
+@using MatBlazor;
+@using Microsoft.AspNetCore.Identity
+
+@inject ISkillsData _skilldb
+
+<h3>SkillsComponent</h3>
+
+<MatAccordion>
+    <MatExpansionPanel @bind-Expanded="@panelOpenState">
+        <MatExpansionPanelSummary>
+            <MatExpansionPanelHeader>Dev Skills:</MatExpansionPanelHeader>
+            <MatExpansionPanelSubHeader>
+                @(panelOpenState ? "Vote on what you think my skills are." : "Click here to see what I'm good at.")
+            </MatExpansionPanelSubHeader>
+        </MatExpansionPanelSummary>
+        <MatExpansionPanelDetails>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>SkillLevel</th>
+                        <th style="text-align:center">Vote</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if(skills is not null)
+                    {
+                        @foreach (var skill in skills)
+                        {
+                            <tr>
+                                <td>@skill.Title</td>
+                                <td>@skill.Description</td>
+                                <td>@skill.SkillLevel</td>
+                                <td style="text-align:center">
+                                    <MatIconButton style="color:deeppink; display:block; margin:auto;" Icon="keyboard_arrow_up" @onclick="() => UpVote(skill)"></MatIconButton>
+                                    <p>@skill.UpVotes</p>
+                                    <MatIconButton style="color:deeppink; display:block; margin:auto;" Icon="keyboard_arrow_down" @onclick="() => DownVote(skill)"></MatIconButton>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </MatExpansionPanelDetails>
+    </MatExpansionPanel>
+
+    <MatExpansionPanel @bind-Expanded="@panelOpenState2">
+        <MatExpansionPanelSummary>
+            <MatExpansionPanelHeader>Other Skills:</MatExpansionPanelHeader>
+            <MatExpansionPanelSubHeader>
+                @(panelOpenState2 ? "Vote on what you think my skills are." : "Click here to see what I'm good at.")
+            </MatExpansionPanelSubHeader>
+        </MatExpansionPanelSummary>
+        <MatExpansionPanelDetails>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>SkillLevel</th>
+                        <th style="text-align:center">Vote</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (skillToEdit is not null)
+                    {
+                        @foreach (var skill in skillToEdit)
+                        {
+                            <tr>
+                                <td>@skill.Title</td>
+                                <td>@skill.Description</td>
+                                <td>@skill.SkillLevel</td>
+                                <td style="text-align:center">
+                                    <MatIconButton style="color:deeppink; display:block; margin:auto;" Icon="keyboard_arrow_up" @onclick="() => UpVote(skill)"></MatIconButton>
+                                    <p>@skill.UpVotes</p>
+                                    <MatIconButton style="color:deeppink; display:block; margin:auto;" Icon="keyboard_arrow_down" @onclick="() => DownVote(skill)"></MatIconButton>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </MatExpansionPanelDetails>
+    </MatExpansionPanel>
+</MatAccordion>
+
+@code {
+    bool panelOpenState;
+    bool panelOpenState2;
+    [Parameter]
+    public int TicketId { get; set; }
+    public int SkillId { get; set; }
+
+    private List<SkillsModel>? skills;
+    private List<SkillsModel>? skillToEdit;
+
+    protected override async Task OnInitializedAsync()
+    {
+        skills = await _skilldb.GetSkills();
+        if (skills is not null)
+        {
+            skillToEdit = skills.FindAll(x => x.PersonID == TicketId);
+        }
+    }
+
+    private async Task UpVote(SkillsModel updatePerson)
+    {
+        updatePerson.UpVotes = updatePerson.UpVotes + 1;
+        SkillsModel p = new SkillsModel
+            {
+                SkillID = updatePerson.SkillID,
+                Title = updatePerson.Title,
+                SkillLevel = updatePerson.UpVotes,
+                UpVotes = updatePerson.UpVotes,
+                DownVotes = updatePerson.DownVotes,
+            };
+        await _skilldb.EditSkill(p);
+    }
+
+    private async Task DownVote(SkillsModel updatePerson)
+    {
+        updatePerson.UpVotes = updatePerson.UpVotes - 1;
+        SkillsModel p = new SkillsModel
+            {
+                SkillID = updatePerson.SkillID,
+                Title = updatePerson.Title,
+                SkillLevel = updatePerson.UpVotes,
+                UpVotes = updatePerson.UpVotes,
+                DownVotes = updatePerson.DownVotes,
+            };
+        await _skilldb.EditSkill(p);
+    }
+}

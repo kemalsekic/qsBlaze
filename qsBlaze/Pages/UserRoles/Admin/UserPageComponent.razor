@@ -1,0 +1,153 @@
+﻿@page "/userroles/admin/userpage/{PersonId:int}"
+
+@attribute [Authorize(Roles = "Admin")]
+@using qsBlaze.Models
+@using DataAccessLibrary
+@using DataAccessLibrary.Models
+@using DataAccessLibrary.Interfaces
+@using qsBlaze.Data.UserInfo
+@using MatBlazor;
+@using Microsoft.AspNetCore.Identity
+@using System.Text
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using System.Net.Http.Headers
+@using qsBlaze.Controllers.AdminController
+@using System.Security.Cryptography
+@using System.Linq
+
+@inject NavigationManager NavManager
+@inject IAppUserData _db
+
+<h3>Edit User: @personToEdit.UserName</h3>
+
+<br />
+<br />
+
+@if (people is null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Role Id</th>
+                <th>Role</th>
+                <th>UserName</th>
+                <th>Email Address</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if(personToEdit is not null)
+            {
+                <tr>
+                    <td>@personToEdit.Id</td>
+                    <td>@personToEdit.RoleId</td>
+                    <td>
+                        <MatSelectValue @bind-Value="@personToEdit.RoleType" Items="@userRoleTypes" ValueSelector="@(i=>i.Name)">
+                            <ItemTemplate>
+                                <span>@context?.Name</span>
+                            </ItemTemplate>
+                        </MatSelectValue>
+                    </td>
+                    <td>@personToEdit.UserName</td>
+                    <td>@personToEdit.Email</td>
+                    <td>
+                        <button class="btn btn-primary mat-elevation-z8" @onclick="()=>ToggleEnableEdit()">Edit</button>
+                        <button disabled="@(enableEdit == true)" class="btn btn-success mat-elevation-z8" @onclick="()=>UpdateUser(personToEdit)">Save</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<br />
+<hr />
+
+@code {
+    private string? activeUser;
+    [Parameter]
+    public int PersonId { get; set; }
+
+    private List<ApplicationUser> people;
+    private ApplicationUser personToEdit = new ApplicationUser();
+    private List<UserRolesModel>? userRoles;
+    private List<UserRolesModel>? categories;
+    private List<UserRolesModel>? userRoleTypes;
+    private bool enableEdit = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        people = await _db.GetRegisteredUsers();
+        if (people != null)
+        {
+            foreach(var person in people)
+            {
+                person.UUId = people.IndexOf(person);
+            }
+            personToEdit = people.Find(x => x.UUId == PersonId);
+        }
+        userRoles = await _db.GetUserRoles();
+        userRoleTypes = await _db.GetUserRoleTypes();
+        setUserRoles(personToEdit);
+    }
+
+    private async Task UpdateUser(ApplicationUser updateUser)
+    {
+        if (updateUser.RoleType == "Admin")
+        {
+            updateUser.RoleId = 1;
+        }
+        else if (updateUser.RoleType == "Developer")
+        {
+            updateUser.RoleId = 2;
+        }
+        else if (updateUser.RoleType == "QA")
+        {
+            updateUser.RoleId = 3;
+        }
+
+        UserRolesModel updateRole = new UserRolesModel
+            {
+                UserId = updateUser.Id,
+                RoleId = updateUser.RoleId,
+                Name = updateUser.RoleType
+            };
+
+        await _db.EditUser(updateUser);
+        bool contains = userRoles.Any(personToEdit => personToEdit.UserId == updateUser.Id);
+        if(!contains)
+        {
+            await _db.AddNewRole(updateRole);
+        }else
+        {
+            await _db.EditUserRole(updateRole);
+        }
+    }
+
+    private void ToggleEnableEdit()
+    {
+        enableEdit = !enableEdit;
+    }
+
+    private void setUserRoles(ApplicationUser p)
+    {
+        if (userRoles is not null)
+        {
+            foreach (var role in userRoles)
+            {
+                if (role.UserId == p.Id)
+                {
+                    p.RoleId = role.RoleId;
+                    p.RoleType = role.Name;
+                }
+            }
+        }
+    }
+}

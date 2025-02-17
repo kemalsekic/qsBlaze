@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:QStack"
+             x:Class="QStack.MainPage"
+            xmlns:states="clr-namespace:QStack.Shared.States"
+            x:DataType="states:PlayersState"
+            xmlns:pages="clr-namespace:QStack.Components.Pages"
+            xmlns:players="clr-namespace:QStack.Components.Pages.Players"
+            xmlns:games="clr-namespace:QStack.Components.Pages.Games"
+            BackgroundColor="CadetBlue">
+
+    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html">
+        <BlazorWebView.RootComponents>
+            <RootComponent Selector="#app" ComponentType="{x:Type local:Components.Routes}" />
+        </BlazorWebView.RootComponents>
+    </BlazorWebView>
+    
+    <!--<ContentPage Title="{Binding PlayerCount}" NavigatedTo="ContentPage_NavigatedTo">-->
+    <!--</ContentPage>-->
+
+    <!--<ContentPage Title="Players">        
+        <BlazorWebView HostPage="wwwroot/index.html">
+            <BlazorWebView.RootComponents>
+                <RootComponent Selector="#app" ComponentType="{x:Type players:PlayersComponent}" />
+            </BlazorWebView.RootComponents>
+        </BlazorWebView>
+    </ContentPage>
+
+    <ContentPage Title="Games">
+        <BlazorWebView HostPage="wwwroot/index.html">
+            <BlazorWebView.RootComponents>
+                <RootComponent Selector="#app" ComponentType="{x:Type games:CreateGameComponent}" />
+            </BlazorWebView.RootComponents>
+        </BlazorWebView>
+    </ContentPage>
+    
+    <pages:HomeTab></pages:HomeTab>-->
+
+</ContentPage>

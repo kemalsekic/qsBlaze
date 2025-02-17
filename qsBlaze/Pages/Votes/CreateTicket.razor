@@ -1,0 +1,55 @@
+﻿@attribute [Authorize]
+
+@using Microsoft.AspNetCore.Authorization
+@using DataAccessLibrary
+@using DataAccessLibrary.Models
+@using qsBlaze.Models
+@using Microsoft.AspNetCore.Identity;
+@using MatBlazor;
+@using DataAccessLibrary.Interfaces;
+
+@inject ITicketData _tdb
+
+<h4>Insert New Ticket - @activeUser</h4>
+<EditForm Model="@newTicket" OnValidSubmit="@InsertTicket">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <MatTextField Required @bind-Value="newTicket.Title" Label="Title"></MatTextField>
+    <MatTextField @bind-Value="newTicket.Description" Label="Description"></MatTextField>
+    <MatTextField @bind-Value="newTicket.TicketNumber" Label="Ticket Number"></MatTextField>
+
+    <MatButton Type="submit" onsubmit="InsertTicket()" Class="btn btn-primary">Submit</MatButton>
+
+    @*<button type="submit" class="btn btn-primary">Submit</button>*@
+</EditForm>
+
+@code {
+    private List<VoteTicketModel> tickets;
+    private VoteTicketModel newTicket = new VoteTicketModel();
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [Inject]
+    UserManager<IdentityUser> userManager { get; set; }
+    private string? activeUser;
+    [Parameter]
+    public VoteTicketModel TheUser { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        activeUser = TheUser.CreatedBy;
+        tickets = await _tdb.GetTickets();
+    }
+
+    private async Task InsertTicket()
+    {
+        TheUser.Title = newTicket.Title;
+        TheUser.Description = newTicket.Description;
+        TheUser.CreatedOn = DateTime.Now;
+        TheUser.TicketNumber = newTicket.TicketNumber;
+        await _tdb.InsertTicket(TheUser);
+
+        tickets.Add(TheUser);
+        newTicket = new VoteTicketModel();
+    }
+}

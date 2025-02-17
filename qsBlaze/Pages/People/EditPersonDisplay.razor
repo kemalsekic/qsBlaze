@@ -1,0 +1,203 @@
+﻿@page "/Data/People/Edit"
+@page "/Data/People/Edit/{personId:int}"
+
+
+@attribute [Authorize(Roles = "Admin")]
+
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using MatBlazor;
+@using DataAccessLibrary.Interfaces;
+
+@inject NavigationManager NavManager
+@inject IPeopleData _db
+
+<h3>Edit Person Page</h3>
+
+<AuthorizeView>
+    <Authorized>
+        <NavLink class="nav-link" href="/Data/People/Create" style="width:fit-content" Match="NavLinkMatch.All">
+            <button class="btn btn-primary oi oi-plus btn-sm" href="/Data/People/Create">  Create</button>
+        </NavLink>
+    </Authorized>
+</AuthorizeView>
+
+@if (people is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Email Address</th>
+                <th>Color</th>
+                <th>Assigned Points</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>@personToEdit.Id</td>
+                <td><MatTextField @bind-Value="@personToEdit.FirstName" Label="First Name"></MatTextField></td>
+                <td><MatTextField @bind-Value="@personToEdit.LastName" Label="Last Name"></MatTextField></td>
+                <td><MatTextField @bind-Value="@personToEdit.EmailAddress" Label="Email Address"></MatTextField></td>
+                <td>
+                    <MatSelectValue @bind-Value="@personToEdit.Color" Items="@colorValues" ValueSelector="@(i=>i.Color)">
+                        <ItemTemplate>
+                            <span style="color: @context.DisplayColor">@context?.Color</span>
+                        </ItemTemplate>
+                    </MatSelectValue>
+                </td>
+                <td>
+                    <MatSelectValue @bind-Value="@personToEdit.AssignedPoints" Items="@pointValues" ValueSelector="@(i=>i.SprintPoints)">
+                        <ItemTemplate>
+                            <span>@context?.SprintPoints</span>
+                        </ItemTemplate>
+                    </MatSelectValue>
+                </td>
+
+                <td>
+                    <button class="btn btn-danger mat-elevation-z8" @onclick="()=>DeletePerson(personToEdit)">Delete</button>
+                    <button class="btn btn-dark mat-elevation-z8" @onclick="()=>ToggleEditCancel()">Cancel</button>
+                    <button class="btn btn-success mat-elevation-z8" @onclick="()=>UpdatePerson(personToEdit)">Save</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+}
+@code {
+    [Parameter]
+    public int PersonId { get; set; }
+
+    private List<PersonModel> people;
+
+    private DisplayPersonModel newPerson = new DisplayPersonModel();
+    private PersonModel personToEdit = new PersonModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        people = await _db.GetPeople();
+        if(people != null)
+        {
+            personToEdit = people.Find(x => x.Id == PersonId);
+        }
+    }
+
+    private async Task InsertPerson()
+    {
+        PersonModel p = new PersonModel
+            {
+                FirstName = newPerson.FirstName,
+                LastName = newPerson.LastName,
+                EmailAddress = newPerson.EmailAddress
+            };
+        await _db.InsertPerson(p);
+
+        people.Add(p);
+        newPerson = new DisplayPersonModel();
+    }
+
+    private async Task DeletePerson(PersonModel deletePerson)
+    {
+        PersonModel p = new PersonModel
+            {
+                Id = deletePerson.Id,
+                FirstName = deletePerson.FirstName,
+                LastName = deletePerson.LastName,
+                EmailAddress = deletePerson.EmailAddress
+            };
+        var deleteMe = people.SingleOrDefault(a => a.Id == deletePerson.Id);
+        if (deleteMe != null)
+        {
+            people.Remove(deleteMe);
+        }
+        await _db.DeletePerson(p);
+        ToggleEditCancel();
+    }
+
+    private void ToggleEditCancel()
+    {
+        NavManager.NavigateTo("/Data/People/View");
+    }
+
+    private async Task UpdatePerson(PersonModel updatePerson)
+    {
+        PersonModel p = new PersonModel
+            {
+                Id = updatePerson.Id,
+                FirstName = updatePerson.FirstName,
+                LastName = updatePerson.LastName,
+                UserName = updatePerson.UserName,
+                EmailAddress = updatePerson.EmailAddress,
+                Color = updatePerson.Color,
+                AssignedPoints = updatePerson.AssignedPoints
+            };
+        await _db.EditPerson(p);
+        ToggleEditCancel();
+    }
+
+    /// Options for seelct/dropdowns
+
+    /// <summary>
+    /// Color Options
+    /// </summary>
+    ///
+    public class ColorOptions
+    {
+        public string Color { get; set; }
+        public string DisplayColor { get; set; }
+
+        public ColorOptions(string color, string displayColor)
+        {
+            Color = color;
+            DisplayColor = displayColor;
+        }
+    }
+
+    ColorOptions value = null;
+
+    ColorOptions[] colorValues = new[]
+    {
+        new ColorOptions("Green", "Green"),
+        new ColorOptions("Yellow", "Gold"),
+        new ColorOptions("Red", "Red"),
+    };
+
+    ///  <summary>
+    /// Point Options
+    /// </summary>
+    public class PointOptions
+    {
+        public int SprintPoints { get; set; }
+
+        public PointOptions(int sprintPoints)
+        {
+            SprintPoints = sprintPoints;
+        }
+    }
+
+    PointOptions pointVal = null;
+    PointOptions[] pointValues = new[]
+    {
+        new PointOptions(1),
+        new PointOptions(2),
+        new PointOptions(3),
+        new PointOptions(4),
+        new PointOptions(5),
+        new PointOptions(6),
+        new PointOptions(7),
+        new PointOptions(8),
+        new PointOptions(9),
+        new PointOptions(10),
+        new PointOptions(11),
+        new PointOptions(12),
+        new PointOptions(13),
+    };
+}

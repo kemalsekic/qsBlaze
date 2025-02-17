@@ -1,0 +1,238 @@
+﻿@page "/Data/People/Profile/{personId:int}"
+
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Interfaces
+@using MatBlazor;
+@using Microsoft.AspNetCore.Identity
+@using Shared.TwilioControllers
+
+@inject NavigationManager NavManager
+@inject IPeopleData _db
+@inject ISkillsData _skilldb
+
+<h3>Person Profile</h3>
+
+<div>
+
+</div>
+
+<h2>@personToEdit.FirstName @personToEdit.LastName</h2>
+<br />
+<br />
+<MatIconButton style="color:deeppink; display:block; margin:auto;" Icon="local_phone" OnClick="()=>SendSMS(personToEdit)"></MatIconButton>
+<p>Hey, @activeUser!  Want to let @personToEdit.FirstName know how they're doing?  Vote on a skill!</p>
+
+@if (people is null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Email Address</th>
+                <th>Color</th>
+                <th>Assigned Points</th>
+                <th>Phone #</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>@personToEdit.Id</td>
+                <td>@personToEdit.FirstName</td>
+                <td>@personToEdit.LastName</td>
+                <td>@personToEdit.EmailAddress</td>
+                <td style="background-color:@personToEdit.Color">@personToEdit.Color</td>
+                <td>@personToEdit.AssignedPoints</td>
+                <td>@personToEdit.PhoneNumber</td>
+                <AuthorizeView>
+                    <Authorized>
+                        <td>
+                            <NavLink class="nav-link" href="@($"/Data/People/Edit/{personToEdit.Id}")" style="width:fit-content" Match="NavLinkMatch.All">
+                                <MatTooltip Tooltip="Edit Person" Context="toolT">
+                                    <MatIconButton style="color:black" RefBack="@toolT" Icon="edit"></MatIconButton>
+                                </MatTooltip>
+                            </NavLink>
+                        </td>
+                    </Authorized>
+                </AuthorizeView>
+            </tr>
+        </tbody>
+    </table>
+
+    <div>
+        <MatAccordion>
+            <MatExpansionPanel @bind-Expanded="@panelOpenState">
+                <MatExpansionPanelSummary>
+                    <MatExpansionPanelHeader>@personToEdit.FirstName's Dev Skills:</MatExpansionPanelHeader>
+                    <MatExpansionPanelSubHeader>
+                        @(panelOpenState ? "Vote on what you think my skills are." : "Click here to see what I'm good at.")
+                    </MatExpansionPanelSubHeader>
+                </MatExpansionPanelSummary>
+                <MatExpansionPanelDetails>
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Description</th>
+                                <th>SkillLevel</th>
+                                <th>UpVotes</th>
+                                <th>DownVotes</th>
+                                <th style="text-align:center">Vote</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var skill in skills)
+                            {
+                                <tr>
+                                    <td>@skill.Title</td>
+                                    <td>@skill.Description</td>
+                                    <td>@skill.SkillLevel</td>
+                                    <td>@skill.UpVotes</td>
+                                    <td>@skill.DownVotes</td>
+                                    <td style="text-align:center">
+                                        <MatIconButton style="color:deeppink; display:block; margin:auto;" Icon="keyboard_arrow_up"></MatIconButton>
+                                        <MatIconButton style="color:deeppink; display:block; margin:auto;" Icon="keyboard_arrow_down"></MatIconButton>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>                    
+                </MatExpansionPanelDetails>
+            </MatExpansionPanel>
+
+            <MatExpansionPanel @bind-Expanded="@panelOpenState2">
+                <MatExpansionPanelSummary>
+                    <MatExpansionPanelHeader>@personToEdit.FirstName's Other Skills:</MatExpansionPanelHeader>
+                    <MatExpansionPanelSubHeader>
+                        @(panelOpenState2 ? "Vote on what you think my skills are." : "Click here to see what I'm good at.")
+                    </MatExpansionPanelSubHeader>
+                </MatExpansionPanelSummary>
+                <MatExpansionPanelDetails>
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Description</th>
+                                <th>SkillLevel</th>
+                                <th>UpVotes</th>
+                                <th>DownVotes</th>
+                                <th style="text-align:center">Vote</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                @foreach (var skill in skills)
+                                {
+                                    <tr>
+                                        <td>@skill.Title</td>
+                                        <td>@skill.Description</td>
+                                        <td>@skill.SkillLevel</td>
+                                        <td>@skill.UpVotes</td>
+                                        <td>@skill.DownVotes</td>
+                                        <td style="text-align:center">
+                                            <MatIconButton style="color:deeppink; display:block; margin:auto;" Icon="keyboard_arrow_up" click="@UpVote(skill)"></MatIconButton>
+                                            <MatIconButton style="color:deeppink; display:block; margin:auto;" Icon="keyboard_arrow_down"></MatIconButton>
+                                        </td>
+                                    </tr>
+                                }
+                        </tbody>
+                    </table>
+                </MatExpansionPanelDetails>
+            </MatExpansionPanel>
+        </MatAccordion>
+    </div>
+}
+
+<br />
+<hr />
+
+@code {
+    bool panelOpenState;
+    bool panelOpenState2;
+    private string? activeUser;
+    [Parameter]
+    public int PersonId { get; set; }
+    public int SkillId { get; set; }
+
+
+    private List<SkillsModel> skills;
+    private SkillsModel skillToEdit = new SkillsModel();
+
+    private List<PersonModel> people;
+    private PersonModel personToEdit = new PersonModel(); 
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [Inject]
+    UserManager<IdentityUser> userManager { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            // User is logged in
+            var currentUser = await userManager.GetUserAsync(user);
+            var currentUserId = currentUser.Id;
+            var currentUserEmail = currentUser.Email;
+            //var currentUserPhone = currentUser.PhoneNumber;
+            var currentUserEmailConfirmed = currentUser.EmailConfirmed;
+            activeUser = currentUser.UserName.ToString();
+            activeUser = activeUser.Substring(0, activeUser.IndexOf("@"));
+        }
+        else
+        {
+            // User is not logged in
+        }
+
+        people = await _db.GetPeople();
+        if (people != null)
+        {
+            personToEdit = people.Find(x => x.Id == PersonId);
+        }
+
+        //SkillId = PersonId;
+        skills = await _skilldb.GetSkills();
+        if (skills != null)
+        {
+            skillToEdit = skills.Find(x => x.PersonID == PersonId);
+        }
+    }
+
+    private async Task UpVote(SkillsModel updatePerson)
+    {
+        updatePerson.UpVotes = updatePerson.UpVotes + 1;
+        SkillsModel p = new SkillsModel
+            {
+                SkillID = updatePerson.SkillID,
+                Title = updatePerson.Title,
+                SkillLevel = updatePerson.UpVotes,
+                UpVotes = updatePerson.UpVotes,
+                DownVotes = updatePerson.DownVotes,
+            };
+        await _skilldb.EditSkill(p);
+    }
+
+    private void ToggleGoBack()
+    {
+        NavManager.NavigateTo("/Data/People/View");
+    }
+
+    private void SendSMS(PersonModel updatePerson)
+    {
+        Console.WriteLine("START SendSMS METHOD.");
+        SendSMSController sendSMSController = new SendSMSController();
+
+        sendSMSController.SendText(updatePerson.PhoneNumber);
+        Console.WriteLine("SendSMS METHOD COMPLETE.");
+    }
+}

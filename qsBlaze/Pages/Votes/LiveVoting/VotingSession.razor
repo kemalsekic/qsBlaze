@@ -1,0 +1,300 @@
+﻿@page "/Pages/Votes/LiveVoting/Votesesh"
+
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Interfaces
+@using MatBlazor;
+@using Microsoft.AspNetCore.Identity
+@using qsBlaze.Shared.Components.Voting
+@using qsBlaze.Shared.GetInfo;
+@using qsBlaze.Shared.Components.Prompts
+@using Microsoft.AspNetCore.SignalR.Client
+@using DataAccessLibrary.Chat;
+@using MatBlazor.Components
+
+@inject NavigationManager NavManager
+@inject IPeopleData _db
+@inject IGetActiveUserClass _aUser
+@inject IVoteData _cdb
+@implements IAsyncDisposable
+@inherits LayoutComponentBase
+
+
+<MatDialog @bind-IsOpen="@dialogIsOpen">
+    <MatDialogTitle>Hi there!</MatDialogTitle>
+    <MatDialogContent>
+        <p>What is your name?</p>
+        <MatTextField Required PlaceHolder="Name" @bind-Value="@votingUser.UserName" @onchange="()=>okBtnEnabled=!okBtnEnabled"></MatTextField>
+
+    </MatDialogContent>
+    <MatDialogActions>
+        <MatButton OnClick="@(e => { dialogIsOpen = false; })">No Thanks</MatButton>
+        <MatButton Disabled="@okBtnEnabled" OnClick="()=>JoinSession(activeUser)">JOIN SESSION</MatButton>
+    </MatDialogActions>
+</MatDialog>
+
+@if (votingUser is not null)
+{
+    @if(showPrompt)
+    {
+        <h3>Live Voting - @votingUser.UserName</h3>
+        <RegisterPromptComponent VUser="@votingUser.UserName"></RegisterPromptComponent>
+    }
+    else
+    {
+        <h3>Live Voting - @votingUser.UserName</h3>
+    }
+    <br />
+    <br />
+    <br />
+    <div class="container overflow-auto shadow-sm p-3 mb-5 bg-white rounded" style="height: auto;">
+        <div class="container overflow-auto shadow-sm p-3 mb-5 bg-white rounded" style="height: 500px;">
+            @if (votes is null)
+            {
+                <MatProgressCircle Closed="true" />
+            }
+            else
+            {
+                // Vote Results
+                @foreach (var vUser in votes)
+                {
+                    @if (votingUser.UserName != vUser.UserName)
+                    {
+                        votingUser.UserName = vUser.UserName;
+                    }
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Voter</th>
+                                <th>Voted Points</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>@vUser.UserName</td>
+                                <td>@vUser.VoteValueString</td>
+                                <td><button class="btn btn-danger mat-elevation-z8" @onclick="()=>DeleteVote(vUser)">Delete</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                }
+            }
+        </div>
+
+        <div class="container overflow-auto shadow-sm p-3 mb-5 bg-white rounded" style="height: 200px;">
+            <div class="form-group"
+             style="position: -webkit-sticky;position: sticky;bottom: 0;background-color: #3a0647;opacity:90%;padding: 35px;text-align:left;font-size: 20px;border:ridge;">
+                <MatButton Style="color:white;" OnClick="()=>Send(1)" disabled="@(IsConnected == false)">1</MatButton>
+                <MatButton Style="color:white;" OnClick="()=>Send(2)" disabled="@(IsConnected == false)">2</MatButton>
+                <MatButton Style="color:white;" OnClick="()=>Send(3)" disabled="@(IsConnected == false)">3</MatButton>
+                <MatButton Style="color:white;" OnClick="()=>Send(5)" disabled="@(IsConnected == false)">5</MatButton>
+                
+            </div>
+        </div>
+    </div>
+
+    <div class="container overflow-auto shadow-sm p-3 mb-5 bg-white rounded" style="height: auto;">
+        <div class="container overflow-auto shadow-sm p-3 mb-5 bg-white rounded" style="height: 500px;">
+            @if (votingUsers is null)
+            {
+                <MatProgressCircle Closed="true" />
+            }
+            else
+            {
+                <h1>Active Voters</h1>
+                // Vote Results
+                @foreach (var vUser in votingUsers)
+                {
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Voter</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>@vUser.UserName</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                }
+            }
+        </div>
+    </div>
+    <br />
+    <hr />
+}
+
+
+@code {
+    bool dialogIsOpen = false;
+    bool okBtnEnabled = false;
+    bool showPrompt = false;
+    private PersonModel activeUser = new PersonModel();
+    private PersonModel votingUser = new PersonModel();
+    private string? groupName = "Kemal";
+    private List<PersonModel> votingUsers = new List<PersonModel>();
+
+    private HubConnection? hubConnection;
+    private List<string> messages = new();
+    private int? inputVote;
+
+    private List<VoteModel>? votes = new();
+    private VoteModel activeTicket = new VoteModel();
+    public bool IsConnected => hubConnection?.State == HubConnectionState.Connected;
+
+    [Inject]
+    UserManager<IdentityUser> userManager { get; set; }
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+        if (authenticationStateTask is not null && authenticationStateTask.IsCompleted)
+        {
+            Task.Run(async () =>
+            {
+                if (user.Identity is not null && user.Identity.IsAuthenticated)
+                {
+                    // User is logged in
+                    var currentUser = await userManager.GetUserAsync(user);
+                    activeUser.UUId = currentUser.Id;
+                    activeUser.EmailAddress = currentUser.Email;
+                    activeUser.UserName = currentUser.UserName.ToString();
+                    activeUser.UserName = activeUser.UserName.Substring(0, activeUser.UserName.IndexOf("@"));
+                    activeUser.IsActive = true;
+                }
+                else
+                {
+                    Console.WriteLine("[QStack] - User is not logged in.");
+                    activeUser.IsActive = false;
+                }
+            }).Wait();
+        }
+        votes = await _cdb.GetVotes();
+
+        //.WithUrl(NavManager.ToAbsoluteUri($"/votehub?sessionId={newVoteNumber}"))
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavManager.ToAbsoluteUri($"/votehub"))
+            .WithAutomaticReconnect()
+            .Build();
+        await hubConnection.StartAsync();
+        hubConnection.On<VoteModel>("ReceiveMessage", ReceiveMessage);
+        hubConnection.On<PersonModel>("NewUserInSession", NewUserInSession);
+        //hubConnection.On<List<PersonModel>>("UpdateActiveUsers", UpdateActiveUsers);
+
+        if (votingUser.UserName is null)
+        {
+            if (activeUser is not null && activeUser.IsActive)
+            {
+                Console.WriteLine("User Exists");
+                votingUser.UserName = activeUser.UserName;
+                await JoinSession(activeUser);
+            }
+            else
+            {
+                dialogIsOpen = true;
+            }
+        }
+    }
+
+    void OkClick()
+    {
+        if (votingUser.UserName is not null)
+        {
+            dialogIsOpen = false;
+            showPrompt = true;
+        }
+        else
+        {
+            showPrompt = true;
+        }
+    }
+
+    private async Task Send(int voteVal)
+    {
+        inputVote = voteVal;
+        string msg = voteVal.ToString();
+        if (hubConnection is not null)
+        {
+            //await hubConnection.SendAsync("SendMessage", votingUserString, msg);
+            //await hubConnection.SendAsync("SendToGroup", groupName, votingUserString, msg);
+
+            await hubConnection.SendAsync("SendMessage", activeUser.UserName, msg);
+            await InsertChat();
+        }
+        inputVote = null;
+    }
+    
+    private async Task JoinSession(PersonModel newUser)
+    {
+        votingUsers.Add(activeUser);
+        await hubConnection.InvokeAsync("JoinRoom", newUser.UserName, groupName);
+        //await hubConnection.InvokeAsync("JoinRoom", groupName);
+        OkClick();
+    }
+
+    private void ReceiveMessage(VoteModel receivedVote)
+    {
+        if (votingUser.UserName != receivedVote.UserName)
+        {
+            votes.Add(receivedVote);
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void NewUserInSession(PersonModel receivedUser)
+    {
+        if (votingUser.UserName != receivedUser.UserName)
+        {
+            votingUsers.Add(receivedUser);
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateActiveUsers(PersonModel receivedUser)
+    {
+        if (votingUser.UserName != receivedUser.UserName)
+        {
+            votingUsers.Add(receivedUser);
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    private async Task InsertChat()
+    {
+        VoteModel p = new VoteModel
+            {
+                VoteNumber = 1,
+                VoteDate = DateTime.Now,
+                VoteValue = inputVote,
+                VoteValueString = inputVote.ToString(),
+                SessionId = 1,
+                UserName = votingUser.UserName
+            };
+        await _cdb.InsertVote(p);
+
+        votes.Add(p);
+    }
+
+    private async Task DeleteVote(VoteModel deleteVote)
+    {
+        var deleteMe = votes.SingleOrDefault(a => a.VoteId == deleteVote.VoteId);
+        if (deleteMe != null)
+        {
+            votes.Remove(deleteMe);
+        }
+        await _cdb.DeleteVote(deleteMe);
+    }
+}

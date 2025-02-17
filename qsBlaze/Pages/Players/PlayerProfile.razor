@@ -1,0 +1,112 @@
+﻿@page "/Pages/Players/Profile/{playerId:int}"
+
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Interfaces
+@using DataAccessLibrary.Models.Games;
+@using DataAccessLibrary.Models.Teams;
+@using DataAccessLibrary.Interfaces.Games;
+@using MatBlazor;
+@using Microsoft.AspNetCore.Identity
+@using Shared.TwilioControllers
+
+@inject NavigationManager NavManager
+@inject IPlayerData _db
+@inject IPlayerData _playerdb
+
+<h3>Player Profile</h3>
+
+<h2>@playerToEdit.FirstName</h2>
+<br />
+<br />
+<p>Hey, @activeUser!  Want to let @playerToEdit.FirstName know how they're doing?  Vote on a skill!</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Player Id</th>
+            <th>Player Name</th>
+            <th></th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>@playerToEdit.PlayerId</td>
+            <td>@playerToEdit.FirstName</td>
+            <AuthorizeView>
+                <Authorized>
+                    <td>
+                        <NavLink class="nav-link" href="@($"/Pages/Players/Edit/{playerToEdit.PlayerId}")" style="width:fit-content" Match="NavLinkMatch.All">
+                            <MatTooltip Tooltip="Edit Person" Context="toolT">
+                                <MatIconButton style="color:black" RefBack="@toolT" Icon="edit"></MatIconButton>
+                            </MatTooltip>
+                        </NavLink>
+                    </td>
+                </Authorized>
+            </AuthorizeView>
+        </tr>
+    </tbody>
+</table>
+
+
+
+@code {
+    bool panelOpenState;
+    bool panelOpenState2;
+    private string? activeUser;
+    [Parameter]
+    public int PlayerId { get; set; }
+
+    private List<PlayersModel> players;
+    private PlayersModel playerToEdit = new PlayersModel();
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [Inject]
+    UserManager<IdentityUser> userManager { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            // User is logged in
+            var currentUser = await userManager.GetUserAsync(user);
+            var currentUserId = currentUser.Id;
+            var currentUserEmail = currentUser.Email;
+            //var currentUserPhone = currentUser.PhoneNumber;
+            var currentUserEmailConfirmed = currentUser.EmailConfirmed;
+            activeUser = currentUser.UserName.ToString();
+            activeUser = activeUser.Substring(0, activeUser.IndexOf("@"));
+        }
+        else
+        {
+            // User is not logged in
+        }
+
+        players = await _db.GetPlayers();
+        if (players != null)
+        {
+            playerToEdit = players.Find(x => x.PlayerId == PlayerId);
+        }
+        players = await _playerdb.GetPlayers();
+    }
+
+    private void ToggleGoBack()
+    {
+        NavManager.NavigateTo("/Pages/Players");
+    }
+
+    private void SelectionChangedEvent(object person)
+    {
+        var currentPlayer = (PlayersModel)person;
+
+        if (currentPlayer is not null)
+        {
+            NavManager.NavigateTo($"/Pages/Players/Profile/{currentPlayer.PlayerId}");
+        }
+    }
+}

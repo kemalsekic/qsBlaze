@@ -1,0 +1,225 @@
+﻿@page "/Pages/Votes/LiveVoting/{newVoteNumber:int}"
+
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Interfaces
+@using MatBlazor;
+@using Microsoft.AspNetCore.Identity
+@using qsBlaze.Shared.Components.Voting
+@using qsBlaze.Shared.GetInfo;
+@using qsBlaze.Shared.Components.Prompts
+@using Microsoft.AspNetCore.SignalR.Client
+@using DataAccessLibrary.Chat;
+
+@inject NavigationManager NavManager
+@inject IPeopleData _db
+@inject IGetActiveUserClass _aUser
+@inject IVoteData _cdb
+@implements IAsyncDisposable
+
+<MatDialog @bind-IsOpen="@dialogIsOpen">
+    <MatDialogTitle>Hi there!</MatDialogTitle>
+    <MatDialogContent>
+        <p>What is your name?</p>
+        <MatTextField Required PlaceHolder="Name" @bind-Value="@votingUserString" @onchange="()=>okBtnEnabled=!okBtnEnabled"></MatTextField>
+
+    </MatDialogContent>
+    <MatDialogActions>
+        <MatButton OnClick="@(e => { dialogIsOpen = false; })">No Thanks</MatButton>
+        @*<MatButton Disabled="@okBtnEnabled" OnClick="@OkClick">JOIN SESSION</MatButton>*@
+        <MatButton Disabled="@okBtnEnabled" OnClick="@JoinSession">JOIN SESSION</MatButton>
+    </MatDialogActions>
+</MatDialog>
+
+@if (votingUser is not null)
+{
+    <h3>Live Voting - @votingUser.UserName</h3>
+    <br />
+    <br />
+    <br />
+    <RegisterPromptComponent VUser="@votingUserString"></RegisterPromptComponent>
+
+    <div class="container overflow-auto shadow-sm p-3 mb-5 bg-white rounded" style="height: auto;">
+
+        <div class="container overflow-auto shadow-sm p-3 mb-5 bg-white rounded" style="height: 500px;">
+            @if (votes is null)
+            {
+                <MatProgressCircle Closed="true" />
+            }
+            else
+            {        
+
+                // Vote Results
+                @foreach(var vUser in votes)
+                {
+                    @if (chatUserName != vUser.UserName)
+                    {
+                        chatUserName = vUser.UserName;
+                    }
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Voter</th>
+                                    <th>Voted Points</th>
+                                    <th>Vote ID</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>@chatUserName</td>
+                                    <td>@vUser.VoteValue</td>
+                                    <td>@vUser.VoteId</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                }
+            }
+        </div>
+
+        @*// Voting Buttons*@
+        <div class="container overflow-auto shadow-sm p-3 mb-5 bg-white rounded" style="height: 200px;">
+            <div class="form-group"
+             style="
+                    position: -webkit-sticky;
+                    position: sticky;
+                    bottom: 0;
+                    background-color: #3a0647;
+                    opacity:90%;
+                    padding: 35px;
+                    text-align:left;
+                    font-size: 20px;
+                    border:ridge;">
+                <MatButton Style="color:white;" OnClick="()=>Send(1)" disabled="@(IsConnected == false)">1</MatButton>
+                <MatButton Style="color:white;" OnClick="()=>Send(2)" disabled="@(IsConnected == false)">2</MatButton>
+                <MatButton Style="color:white;" OnClick="()=>Send(3)" disabled="@(IsConnected == false)">3</MatButton>
+                <MatButton Style="color:white;" OnClick="()=>Send(5)" disabled="@(IsConnected == false)">5</MatButton>
+            </div>
+        </div>
+    </div>
+    <br />
+    <hr />
+}
+
+
+@code {
+    bool dialogIsOpen = false;
+    bool okBtnEnabled = false;
+    private string? activeUser;
+    private string? votingUserString;
+    private string? groupName;
+    [Parameter]
+    public int NewVoteNumber { get; set; }
+    private List<PersonModel> votingUsers;
+    private PersonModel votingUser = new PersonModel();
+
+    private HubConnection? hubConnection;
+    private List<string> messages = new();
+    private int? messageInput;
+    private string? chatUserName = "";
+
+    private List<VoteModel>? votes = new();
+    private VoteModel activeTicket = new VoteModel();
+    public bool IsConnected => hubConnection?.State == HubConnectionState.Connected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        groupName = NewVoteNumber.ToString();
+        await _aUser.GetActiveUser(activeUser);
+        votingUsers = new List<PersonModel>();
+
+        votes = await _cdb.GetVotes();
+
+        //.WithUrl(NavManager.ToAbsoluteUri($"/votehub?sessionId={newVoteNumber}"))
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavManager.ToAbsoluteUri($"/votehub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
+        {
+            var formattedMessage = $"{user}: {message}";
+            messages.Add(formattedMessage);
+            //InvokeAsync(StateHasChanged);
+            StateHasChanged();
+        });
+
+        await hubConnection.StartAsync();
+
+        if (votingUserString is null)
+        {
+            if (activeUser is not null)
+            {
+                Console.WriteLine("User Exists");
+                chatUserName = activeUser;
+                votingUserString = activeUser;
+            }
+            else
+            {
+                OpenDialog();
+            }
+        }
+    }
+
+    private void ToggleGoBack()
+    {
+        NavManager.NavigateTo("/Pages/Votes/VotingCenter");
+    }
+
+    void OpenDialog()
+    {
+        dialogIsOpen = true;
+    }
+
+    void OkClick()
+    {
+        if(votingUserString is not null)
+        {
+            votingUser.UserName = votingUserString;
+            votingUsers.Add(votingUser);
+            dialogIsOpen = false;
+        }
+    }
+
+    private async Task Send(int voteVal)
+    {
+        messageInput = voteVal;
+        string msg = voteVal.ToString();
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("SendToGroup", groupName, votingUserString, msg);
+            await InsertChat();
+        }
+        messageInput = null;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    private async Task InsertChat()
+    {
+        VoteModel p = new VoteModel
+        {
+            VoteNumber = NewVoteNumber,
+            VoteDate = DateTime.Now,
+            VoteValue = messageInput,
+            SessionId = NewVoteNumber,
+            UserName = votingUser.UserName
+        };
+        await _cdb.InsertVote(p);
+
+        votes.Add(p);
+    }
+
+    private async Task JoinSession()
+    {
+        await hubConnection.InvokeAsync("JoinRoom", groupName);
+        //await hubConnection.SendAsync("SendToGroup", votingUser, msg);
+        OkClick();
+    }
+}

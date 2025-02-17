@@ -1,0 +1,127 @@
+﻿@using QStack.DataAccess.Models;
+@using MatBlazor;
+@using Plugin.LocalNotification
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@using QStack.Shared.States
+@using System.Security.Claims
+
+@inject HttpClient httpClient
+@inject QStack.DataAccess.Interfaces.IPeopleData _db
+@inject IJSRuntime jsRunTime;
+@inject NavigationManager NavManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<MatH4>@activeUser</MatH4>
+
+<br />
+
+@if (players == null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <br />
+
+    @foreach (var player in players)
+    {
+        <div>
+            <MatCard class="demo-mat-card" Style="box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);;">
+                <div class="demo-mat-card-content">
+                    <MatHeadline6 class="demo-mat-card-clean-margin" Style="text-indent: 5%;">
+                        @player.FirstName
+                    </MatHeadline6>
+                    <MatSubtitle2 class="demo-mat-card-clean-margin" Style="text-indent: 5%;">
+                        @player.Color
+                    </MatSubtitle2>
+                </div>
+                <MatCardActions>
+                    <MatCardActionButtons>
+                        <MatButton OnClick="()=>OpenPlayer(player.Id)">View</MatButton>
+                        <MatButton>Bookmark</MatButton>
+                    </MatCardActionButtons>
+
+                    <MatCardActionIcons>
+                        <MatIconButton Icon="@MatIconNames.Add" OnClick="()=>OpenPlayer(player.Id)"></MatIconButton>
+                        <MatIconButton Icon="@MatIconNames.Fullscreen"></MatIconButton>
+                    </MatCardActionIcons>
+                </MatCardActions>
+            </MatCard>
+            <br />
+            <MatDivider></MatDivider>
+            <br />
+        </div>
+    }
+}
+
+@code {
+    [CascadingParameter]
+    public string? FoundActiveUser { get; set; }
+    public string? currentUser = "";
+    private bool _loading;
+    private List<PersonModel> players;
+    private string? authMessage;
+    private string? surname;
+    private IEnumerable<Claim> claims = Enumerable.Empty<Claim>();
+    private string? activeUser;
+    private string? activeUserOid;
+
+    private PlayersState? _playersState;
+
+    private DisplayPersonModel newPerson = new DisplayPersonModel();
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            var user = authState?.User;
+
+            if (user?.Identity is not null && user.Identity.IsAuthenticated)
+            {
+                authMessage = $"{user.Identity.Name} is authenticated.";
+                activeUser = user.Claims.First(claim => claim.Type == "name").Value.ToString();
+                activeUserOid = user.Claims.First(claim => claim.Type == "oid").Value.ToString();
+                System.Diagnostics.Debug.WriteLine($"QSDebug[PlayersComponent] - user:  {user.Claims.First(claim => claim.Type == "name").Value.ToString()}");
+            }
+        }
+        // System.Diagnostics.Debug.WriteLine(user.ToString());
+        // System.Diagnostics.Debug.WriteLine(currentUser);
+        players = await _db.GetPeople();
+    }
+
+    private void OnBtnClicked()
+    {
+        var request = new NotificationRequest
+            {
+                NotificationId = 1337,
+                Title = "Welcome to QStack",
+                Subtitle = "This is a test",
+                Description = "Example description",
+                BadgeNumber = 42
+            };
+
+        LocalNotificationCenter.Current.Show(request);
+    }
+
+    private void OpenPlayer(int playerId)
+    {
+        NavManager.NavigateTo($"/players/playerprofile/{playerId}");
+    }
+
+    private void SelectionChangedEvent(object person)
+    {
+        var currentPlayer = (PersonModel)person;
+
+        if (currentPlayer is not null)
+        {
+            NavManager.NavigateTo($"/players/playerprofile/{currentPlayer.Id}", true);
+        }
+    }
+}

@@ -1,0 +1,48 @@
+﻿@using qsBlaze.Data.UserInfo;
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Interfaces;
+
+@inject IJSRuntime jsRunTime;
+@inject IPeopleData _db
+
+<PageTitle>Home</PageTitle>
+
+<h1>Dashboards</h1>
+
+<div>
+    <button class="btn btn-primary" @onclick="GeneratePieChartBlazor">Bake Pies</button>
+    <button class="btn btn-outline-secondary" @onclick="GenerateXYBlazor">XY Chart</button>
+</div>
+
+<div class="container">
+    <div id="chartdiv"></div>
+</div>
+
+
+@code {
+    UserInfoChartData userInfoData = new UserInfoChartData();
+    List<UserInfoChartData> userInfos = new List<UserInfoChartData>();
+    private List<PersonModel> people;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        people = await _db.GetPeople();
+
+        //await jsRunTime.InvokeVoidAsync("GeneratePieChart", people);
+    }
+
+    private async Task GeneratePieChartBlazor()
+    {
+        await jsRunTime.InvokeVoidAsync("GeneratePieChart", people);
+    }
+
+    private async Task GenerateXYBlazor()
+    {
+        await jsRunTime.InvokeVoidAsync("GenerateXYChart", people);
+    }
+
+}
+

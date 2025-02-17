@@ -1,0 +1,307 @@
+﻿@page "/newGame"
+@using Microsoft.AspNetCore.SignalR.Client
+@using QStack.DataAccess.Models;
+@using MatBlazor;
+@using Plugin.LocalNotification
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using QStack.Shared.States
+
+@implements IDisposable
+
+@inject PlayersState PlayerState
+@inject QStack.DataAccess.Interfaces.IPeopleData _db
+@inject IJSRuntime jsRunTime;
+@inject NavigationManager NavManager
+
+<MatH4>Create Game</MatH4>
+
+
+<br />
+<MatDivider></MatDivider>
+<br />
+
+@if(selectedPlayers?.Count == 0)
+{
+    <MatFAB disabled Style="position: fixed; bottom: 1rem; right: 1rem; color:gray;" Icon="@MatIconNames.Person_add_disabled"></MatFAB>
+}
+else
+{
+    <MatFAB Style="position: fixed; bottom: 1rem; right: 1rem;" Icon="@MatIconNames.Person_add" OnClick="@(_ => CreateGame())"></MatFAB>
+}
+
+<MatAccordion>
+    <MatExpansionPanel>
+        <MatExpansionPanelSummary>
+            <MatExpansionPanelHeader>Game Info</MatExpansionPanelHeader>
+            @* <MatExpansionPanelSubHeader>@GameType</MatExpansionPanelSubHeader> *@
+        </MatExpansionPanelSummary>
+        <MatExpansionPanelDetails>
+            <p>
+                <MatSelect Label="Pick Game Type" @bind-Value="@GameType">
+                    <MatOptionString></MatOptionString>
+                    <MatOptionString Value="Soccer">Soccer</MatOptionString>
+                    <MatOptionString Value="Basketball">Basketball</MatOptionString>
+                    <MatOptionString Value="Tennis">Tennis</MatOptionString>
+                </MatSelect>
+            </p>
+            @if(GameType == "" || GameType == null)
+            {
+                <p style="visibility:hidden;"></p>                
+            }
+            else
+            {
+                <p>
+                    <MatSelect Label="Location" @bind-Value="@GameLocation">
+                        @if (GameType == "Soccer")
+                        {
+                            <MatOptionString></MatOptionString>
+                            <MatOptionString Value="Vetta">Vetta</MatOptionString>
+                            <MatOptionString Value="STL FutbolClub">STL FutbolClub</MatOptionString>
+                            <MatOptionString Value="JB Park">JB Park</MatOptionString>
+                        }
+                        else if (GameType == "Basketball")
+                        {
+                            <MatOptionString></MatOptionString>
+                            <MatOptionString Value="Bernard Middle School">Bernard Middle School</MatOptionString>
+                            <MatOptionString Value="White Cliff Park">White Cliff Park</MatOptionString>
+                            <MatOptionString Value="Fenton Park">Fenton Park</MatOptionString>
+                            <MatOptionString Value="YMCA on Tesson Ferry">YMCA on Tesson Ferry</MatOptionString>
+                        }
+                        else if (GameType == "Tennis")
+                        {
+                            <MatOptionString></MatOptionString>
+                            <MatOptionString Value="Bernard Middle School">Bernard Middle School</MatOptionString>
+                            <MatOptionString Value="White Cliff Park">White Cliff Park</MatOptionString>
+                            <MatOptionString Value="JB Park">JB Park</MatOptionString>
+                        }
+                    </MatSelect>
+                </p>
+            }
+        </MatExpansionPanelDetails>
+    </MatExpansionPanel>
+
+    <br />
+    <MatDivider></MatDivider>
+    <br />
+
+    <MatDatePicker Required @bind-Value="GameDate" Format="MMMM/dd"></MatDatePicker>
+    <p>
+        <MatSelect Label="Time" @bind-Value="@GameTime">
+            <MatOptionString></MatOptionString>
+            <MatOptionString Value="5:00pm">5:00pm</MatOptionString>
+            <MatOptionString Value="5:30pm">5:30pm</MatOptionString>
+            <MatOptionString Value="6:00pm">6:00pm</MatOptionString>
+            <MatOptionString Value="6:30pm">6:30pm</MatOptionString>
+            <MatOptionString Value="7:00pm">7:00pm</MatOptionString>
+            <MatOptionString Value="7:30pm">7:30pm</MatOptionString>
+            <MatOptionString Value="8:00pm">8:00pm</MatOptionString>
+            <MatOptionString Value="8:30pm">8:30pm</MatOptionString>
+            <MatOptionString Value="9:00pm">9:00pm</MatOptionString>
+            <MatOptionString Value="9:30pm">9:30pm</MatOptionString>
+        </MatSelect>
+    </p>
+
+    <br />
+    <MatDivider></MatDivider>
+    <br />
+
+    <MatExpansionPanel @bind-Expanded="@panelOpenState">
+        <MatExpansionPanelSummary>
+            <MatExpansionPanelHeader>Add Players</MatExpansionPanelHeader>
+            <MatExpansionPanelSubHeader>
+                @* @(panelOpenState ? "Players" : "Players") *@
+            </MatExpansionPanelSubHeader>
+        </MatExpansionPanelSummary>
+        <MatExpansionPanelDetails Style="overflow: visible;  display: flex;">
+            <div style="margin-block: 5% 5%;margin-inline: 5% 5%;">
+                <p>
+                    <MatAutocompleteList Items="@displayPerson" TItem="PersonModel" Label="Select player" CustomStringSelector="@(i => i.UserName)" ValueChanged="SelectionChangedEvent" ShowClearButton="true">
+                        <ItemTemplate>
+                            <div style="display: flex; flex-direction: row; width: 100%;">
+                                @if (selectedPlayers.Contains(context))
+                                {
+                                    displayPerson.Remove(context);
+                                }
+                                @if (displayPerson.Contains(context))
+                                {
+                                    <div style="flex: 1;">@context.UserName</div>
+                                }
+                                else
+                                {
+                                    <div style="flex: 1;"></div>
+                                }
+                            </div>
+                        </ItemTemplate>
+                    </MatAutocompleteList>
+                </p>
+
+                <br />
+                <MatDivider></MatDivider>
+                <br />
+
+                @if (selectedPlayers != null)
+                {
+                    @foreach (var player in selectedPlayers)
+                    {
+                        @if (player.UserName == "")
+                        {
+                            selectedPlayers.Remove(player);
+                        }
+                        else
+                        {
+                            <MatCard class="demo-mat-card" Style="box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);;">
+                                <div class="demo-mat-card-content">
+                                    <MatHeadline6 class="demo-mat-card-clean-margin" Style="text-indent: 5%;">
+                                        @player.FirstName
+                                    </MatHeadline6>
+                                    <MatSubtitle2 class="demo-mat-card-clean-margin" Style="text-indent: 5%;">
+                                        @player.Color
+                                    </MatSubtitle2>
+                                </div>
+                                <MatCardActions>
+                                    <MatCardActionIcons>
+                                        <MatIconButton Icon="@MatIconNames.Delete" OnClick="()=>RemovePlayer(player)"></MatIconButton>
+                                    </MatCardActionIcons>
+                                </MatCardActions>
+                            </MatCard>
+                            <br />
+                            <MatDivider></MatDivider>
+                            <br />
+                        }
+                    }
+                }
+            </div>
+        </MatExpansionPanelDetails>
+    </MatExpansionPanel>
+
+    <br />
+    <MatDivider></MatDivider>
+    <br />
+
+    
+
+</MatAccordion>
+
+@code {
+    bool panelOpenState;
+    private List<PersonModel> players;
+    private List<PersonModel>? selectedPlayers;
+    PersonModel value = null;
+    double progress;
+    public string GameType { get; set; }
+    public string GameLocation { get; set; }
+    private List<string>? availablePlayers;
+    DateTime? GameDate = DateTime.Now;
+    string? GameDateString = "";
+    string GameTime = "";
+    private HubConnection? hubConnection;
+    private List<string> messages = new();
+    
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+    private string? activeUser;
+    private string? activeUserOid;
+
+    private List<PersonModel> displayPerson;
+
+    public void IncrementProgress()
+    {
+        progress += .2;
+    }
+
+    public void Dispose()
+    {
+        PlayerState.PropertyChanged -= (sender, e) => StateHasChanged();
+    }
+
+    private void OnPlayerCountChange(object? sender, PropertyChangingEventArgs e) => StateHasChanged();
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        PlayerState.PropertyChanged += (sender, e) => StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(500);
+        System.Diagnostics.Debug.WriteLine($"QSDebug[PlayersComponent] - OnInitializedAsync Started");
+        if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            var user = authState?.User;
+
+            if (user?.Identity is not null && user.Identity.IsAuthenticated)
+            {
+                activeUser = user.Claims.First(claim => claim.Type == "name").Value.ToString();
+                activeUserOid = user.Claims.First(claim => claim.Type == "oid").Value.ToString();
+            }
+            System.Diagnostics.Debug.WriteLine($"QSDebug[PlayersComponent] - user:  {user.Claims.First(claim => claim.Type == "name").Value.ToString()}");
+        }
+        players = await _db.GetPeople();
+        displayPerson = new List<PersonModel>(players);
+        selectedPlayers = new List<PersonModel>();
+
+        System.Diagnostics.Debug.WriteLine($"QSDebug[PlayersComponent] - OnInitializedAsync Ended");
+    }
+
+    private void IncrementPlayerCount() => PlayerState.PlayerCount++;
+    private void DecrementPlayerCount() => PlayerState.PlayerCount--;
+
+    private void SelectionChangedEvent(PersonModel person)
+    {
+        if(person != null)
+        {
+            displayPerson.Remove(person);
+            selectedPlayers?.Add(person);
+            IncrementPlayerCount();
+            value = person;
+
+            foreach (var p in selectedPlayers)
+            {
+                if(p.UserName == "")
+                    selectedPlayers.Remove(p);
+            }
+        }
+        StateHasChanged();
+    }
+
+    private void RemovePlayer(object person)
+    {
+        var currentPlayer = (PersonModel)person;
+        if (currentPlayer != null)
+        {
+            displayPerson.Add(currentPlayer);
+            selectedPlayers?.Remove(currentPlayer);
+            DecrementPlayerCount();
+            value = currentPlayer;
+
+        }
+        StateHasChanged();
+    }
+
+    void CreateGame()
+    {
+        SendPushNotifications();
+    }
+
+    private void SendPushNotifications()
+    {
+        GameDateString = GameDate.Value.ToString("MMMM,dd");
+        var request = new NotificationRequest
+            {
+                NotificationId = 1337,
+                Title = $"Kemal invited you to {GameType.ToLower()}!",
+                Subtitle = $"Are you down?",
+                Description = $"{GameLocation} at {GameTime} {GameDateString}.",
+                BadgeNumber = 42
+            };
+
+        LocalNotificationCenter.Current.Show(request);
+    }
+
+
+
+}

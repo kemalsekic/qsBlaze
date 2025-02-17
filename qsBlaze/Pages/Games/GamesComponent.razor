@@ -1,0 +1,129 @@
+﻿@page "/Pages/Games"
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Models.Games;
+@using DataAccessLibrary.Models.Teams;
+@using DataAccessLibrary.Interfaces.Games;
+@using MatBlazor;
+@using System.ComponentModel.DataAnnotations
+@using System.IO
+@using System.Net.Http.Headers
+
+@inject IGameData _db
+@inject IJSRuntime jsRunTime;
+@inject NavigationManager NavManager
+
+<h3>Games</h3>
+
+<AuthorizeView>
+    <Authorized Context="Auth">
+        <MatTooltip Tooltip="Create new user">
+            <MatIconButton style="color:deeppink" RefBack="@context" Icon="add" OnClick="@OpenDialog"></MatIconButton>
+        </MatTooltip>
+    </Authorized>
+</AuthorizeView>
+
+<MatDialog @bind-IsOpen="@dialogIsOpen">
+    <MatDialogTitle>Create a new user</MatDialogTitle>
+    <MatDialogContent>
+        <EditForm Model="@newGame" OnValidSubmit="@InsertGame">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <MatTextField id="GameName" @bind-Value="@newGame.GameName" Label="Game Name"></MatTextField>
+            <MatTextField id="GameHost" @bind-Value="@newGame.GameHost" Label="Game Host"></MatTextField>
+            <p>
+                <MatDatePicker @bind-Value="@newGame.GameDate"></MatDatePicker>
+            </p>
+            @*<button type="submit" class="btn btn-primary">Submit</button>*@
+        </EditForm>
+    </MatDialogContent>
+    <MatDialogActions>
+        <MatButton OnClick="@(e => { dialogIsOpen = false; })">Cancel</MatButton>
+        <MatButton type="submit" OnClick="@InsertGame">Create</MatButton>
+    </MatDialogActions>
+</MatDialog>
+
+@if (games is null)
+{
+    <MatProgressCircle Closed="true" />
+}
+else
+{
+    <MatTable Items="@games" class="mat-elevation-z5" AllowSelection="true" SelectionChanged="SelectionChangedEvent" FilterByColumnName="FirstName">
+        <MatTableHeader>
+            <th>Id</th>
+            <th>FirstName</th>
+        </MatTableHeader>
+        <MatTableRow>
+            <td>@context.GameId</td>
+            <td>@context.GameName</td>
+        </MatTableRow>
+    </MatTable>
+}
+@code {
+    public DateTime? GameDate { get; set; } = DateTime.Now.AddDays(-10);
+    bool panelOpenState;
+    bool dialogIsOpen = false;
+    void OpenDialog()
+    {
+        dialogIsOpen = true;
+    }
+    private List<GamesModel> games;
+
+    private GamesModel newGame = new GamesModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        games = await _db.GetGames();
+    }
+
+    private async Task InsertGame()
+    {
+        GamesModel p = new GamesModel
+            {
+                GameName = newGame.GameName,
+                GameDate = newGame.GameDate,
+                GameHost = newGame.GameHost
+            };
+        await _db.InsertGame(p);
+
+        games.Add(p);
+        newGame = new GamesModel();
+        dialogIsOpen = false;
+    }
+
+    private async Task DeleteGame(GamesModel deleteGame)
+    {
+        GamesModel p = new GamesModel
+            {
+                GameId = deleteGame.GameId,
+            };
+        var deleteMe = games.SingleOrDefault(a => a.GameId == deleteGame.GameId);
+        if (deleteMe != null)
+        {
+            games.Remove(deleteMe);
+        }
+        await _db.DeleteGame(p);
+    }
+
+    private async Task UpdateGame(GamesModel updateGame)
+    {
+        GamesModel p = new GamesModel
+            {
+                GameId = updateGame.GameId,
+                GameName = updateGame.GameName,
+            };
+        await _db.EditGame(p);
+    }
+
+    private void SelectionChangedEvent(object person)
+    {
+        var currentGame = (GamesModel)person;
+
+        if (currentGame is not null)
+        {
+            NavManager.NavigateTo($"/Pages/Games/Profile/{currentGame.GameId}");
+        }
+    }
+}

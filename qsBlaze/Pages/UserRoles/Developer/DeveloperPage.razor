@@ -1,0 +1,30 @@
+﻿@page "/developer"
+
+@using MatBlazor;
+
+@*@attribute [Authorize(Roles = "Admin, Developer")]*@
+
+<h3>Developer Page</h3>
+
+<h4>VirtualScroll with @items.Count() items</h4>
+<div style="
+    overflow-y: hidden;
+    margin:5px;
+    padding:5px;
+    background-color: green;
+    width: 500px;
+    height: 110px;
+    overflow: auto;
+    text-align:justify;">
+    <MatVirtualScroll style="height: 500px;" ItemType="string" Items="@items" ItemHeight="50">
+        <ItemTemplate>
+            <div>@context</div>
+        </ItemTemplate>
+    </MatVirtualScroll>
+
+</div>
+
+@code
+{
+    public IEnumerable<string> items = Enumerable.Range(0, 333000).Select(i => i.ToString()).ToArray();
+}

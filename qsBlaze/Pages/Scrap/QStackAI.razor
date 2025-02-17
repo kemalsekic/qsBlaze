@@ -1,0 +1,90 @@
+﻿@page "/Pages/Scrap/QStackAI"
+
+@using MatBlazor;
+@using MatBlazor.Components
+@using qsBlaze.Models;
+@using DataAccessLibrary;
+@using DataAccessLibrary.Models;
+@using DataAccessLibrary.Interfaces
+@using Microsoft.AspNetCore.Identity
+@using qsBlaze.Shared.GetInfo;
+@using System;
+@using System.Net.Http;
+@using System.Threading.Tasks;
+
+@inject NavigationManager NavManager
+@inject IPeopleData _db
+@inject IGetActiveUserClass _aUser
+
+<h3>QStackAI</h3>
+
+<div class="container overflow-auto shadow-sm p-3 mb-5 bg-white rounded" style="height: auto;">
+    <div class="container overflow-auto shadow-sm p-3 mb-5 bg-white rounded" style="height: 500px;">
+        <h1>Message Returned:</h1>
+        <p>@msgReturned</p>
+    </div>
+
+    <div class="container overflow-auto shadow-sm p-3 mb-5 bg-white rounded" style="height: 200px;">
+        <div class="form-group"
+             style="
+                    position: -webkit-sticky;
+                    position: sticky;
+                    bottom: 0;
+                    background-color: #3a0647;
+                    opacity:90%;
+                    padding: 35px;
+                    text-align:left;
+                    font-size: 20px;
+                    border:ridge;">
+            <input style="padding:20px; width:75%; border:ridge" placeholder="Type a new message" @onchange="changeValue" />
+            @*<MatButton Icon="send" Style="color:white;" @onchange="CallOpenAI">Send</MatButton>*@
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? messageInput;
+    private string? msgReturned;
+
+    public async Task CallOpenAI(string sendThis)
+    {
+        string apiKey = "";
+        string prompt2 = "Hello, how are you?";
+        string prompt = sendThis;
+        string apiUrl = "https://api.openai.com/v1/completions?model=text-davinci-003";
+        string modelName = "text-davinci-003"; // or "curie"
+        string modelName2 = "curie"; // or "curie"
+
+        HttpClient client = new HttpClient();
+        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+
+        var requestBody = new
+        {
+            prompt = prompt,
+            max_tokens = 5,
+            n = 1,
+            stop = "."
+        };
+
+        //var response = await client.PostAsJsonAsync(apiUrl, requestBody);
+        var response = await client.PostAsJsonAsync($"{apiUrl}?model={modelName}", requestBody);
+        var result = await response.Content.ReadAsStringAsync();
+
+        msgReturned = result.ToString();
+
+        Console.WriteLine(result);
+    }
+
+    public async Task changeValue(ChangeEventArgs eventArgs)
+    {
+        if (eventArgs.Value is not null && eventArgs.Value.ToString() != "")
+        {
+            messageInput = eventArgs.Value.ToString();
+            if(messageInput is not null)
+            {
+                await CallOpenAI(messageInput);
+            }
+        }
+    }
+}

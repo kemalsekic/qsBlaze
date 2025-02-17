@@ -1,0 +1,18 @@
+﻿@if(VUser is not null)
+{
+    <div class="alert alert-secondary mt-4">
+        <span class="oi oi-pencil me-2" aria-hidden="true"></span>
+        <strong>Hello, @VUser</strong>
+
+        <span class="text-nowrap">
+            It looks like you are not a registered user,
+            <a target="_blank" class="font-weight-bold link-dark" href="/Identity/Account/Register">Click Here</a>
+        </span>
+        to join qsBlaze as an active user!
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? VUser { get; set; }
+}
